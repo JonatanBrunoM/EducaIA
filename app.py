@@ -1,16 +1,16 @@
 import streamlit as st
 import os
+# Importações atualizadas conforme os novos padrões da LangChain
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA # Caminho direto
 
-# Configuração da página para ficar bonita
-st.set_page_config(page_title="EducaIA - Assistente de Estudos", layout="centered")
+st.set_page_config(page_title="EducaIA - Assistente", layout="centered")
 
-# LISTA DOS LIVROS (Verifique se os nomes batem com os que você subiu)
+# Certifique-se de que esses nomes são IGUAIS aos arquivos no GitHub
 LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
 
 @st.cache_resource
@@ -21,63 +21,49 @@ def processar_base():
             loader = PyPDFLoader(arquivo)
             documentos.extend(loader.load())
     
-    # Divide o texto em blocos menores
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     textos = text_splitter.split_documents(documentos)
-    
-    # Cria os Embeddings (transforma texto em números)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    
-    # Cria o banco de dados vetorial
     return FAISS.from_documents(textos, embeddings)
 
-# --- INTERFACE ---
 st.title("📚 EducaIA")
-st.subheader("Sua inteligência artificial acadêmica")
 
-# Verifica se os arquivos estão lá
 if all(os.path.exists(f) for f in LIVROS):
-    with st.status("Preparando base de conhecimento...", expanded=False) as status:
+    with st.status("Lendo ebooks...", expanded=False) as status:
         base = processar_base()
-        status.update(label="Base de dados pronta!", state="complete", expanded=False)
+        status.update(label="Base pronta!", state="complete")
 
-    # Inicializa o histórico do chat
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Exibe mensagens anteriores
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Campo de pergunta
-    # Campo de pergunta
-    if prompt := st.chat_input("Pergunte algo sobre a matéria:"):
+    if prompt := st.chat_input("Dúvida sobre os PDFs?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # BUSCA A CHAVE OCULTA NOS SECRETS DO STREAMLIT
-        # Não cole a chave gsk_... aqui! Use apenas o nome do rótulo.
         try:
-            minha_chave = st.secrets["GROQ_API_KEY"]
-        except KeyError:
-            st.error("Erro: A chave 'GROQ_API_KEY' não foi configurada nos Secrets do Streamlit.")
-            st.stop()
-
-        llm = ChatGroq(groq_api_key=minha_chave, model_name="llama3-8b-8192")
-        
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm, 
-            chain_type="stuff", 
-            retriever=base.as_retriever()
-        )
-        
-        with st.chat_message("assistant"):
-            with st.spinner("Consultando livros..."):
-                resposta = qa_chain.run(prompt)
-                st.markdown(resposta)
-        
-        st.session_state.messages.append({"role": "assistant", "content": resposta})
+            chave = st.secrets["GROQ_API_KEY"]
+            llm = ChatGroq(groq_api_key=chave, model_name="llama3-8b-8192")
+            
+            # Versão simplificada da chain
+            qa_chain = RetrievalQA.from_chain_type(
+                llm=llm, 
+                chain_type="stuff", 
+                retriever=base.as_retriever()
+            )
+            
+            with st.chat_message("assistant"):
+                with st.spinner("Pensando..."):
+                    resposta = qa_chain.invoke(prompt) # Mudamos 'run' para 'invoke' (padrão novo)
+                    texto_resposta = resposta["result"] if isinstance(resposta, dict) else resposta
+                    st.markdown(texto_resposta)
+            
+            st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
+        except Exception as e:
+            st.error(f"Ocorreu um erro: {e}")
 else:
-    st.error("Erro: Não encontrei os PDFs no repositório. Verifique os nomes dos arquivos.")
+    st.error("ERRO: Os PDFs não foram encontrados. Verifique se os nomes no GitHub estão como livro1.pdf, etc.")
