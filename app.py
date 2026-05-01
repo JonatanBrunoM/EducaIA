@@ -58,9 +58,8 @@ if all(os.path.exists(f) for f in LIVROS):
 
         # CHAVE DA GROQ (Recomendo colocar diretamente aqui para o trabalho)
         # Substitua SUA_CHAVE pela chave que você gerou
-      minha_chave = st.secrets["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"]
-
-llm = ChatGroq(groq_api_key=minha_chave, model_name="llama3-8b-8192")
+      minha_chave = st.secrets["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"]
+        llm = ChatGroq(groq_api_key=minha_chave, model_name="llama3-8b-8192")
         
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm, 
