@@ -1,12 +1,15 @@
 import streamlit as st
 import os
-# Importações atualizadas conforme os novos padrões da LangChain
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.chains.retrieval_qa.base import RetrievalQA # Caminho direto
+
+# NOVA FORMA DE IMPORTAR A CHAIN (Evita o erro ModuleNotFoundError)
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate
 
 st.set_page_config(page_title="EducaIA - Assistente", layout="centered")
 
