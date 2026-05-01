@@ -51,14 +51,20 @@ if all(os.path.exists(f) for f in LIVROS):
             st.markdown(message["content"])
 
     # Campo de pergunta
+    # Campo de pergunta
     if prompt := st.chat_input("Pergunte algo sobre a matéria:"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # CHAVE DA GROQ (Recomendo colocar diretamente aqui para o trabalho)
-        # Substitua SUA_CHAVE pela chave que você gerou
-      minha_chave = st.secrets["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"]
+        # BUSCA A CHAVE OCULTA NOS SECRETS DO STREAMLIT
+        # Não cole a chave gsk_... aqui! Use apenas o nome do rótulo.
+        try:
+            minha_chave = st.secrets["GROQ_API_KEY"]
+        except KeyError:
+            st.error("Erro: A chave 'GROQ_API_KEY' não foi configurada nos Secrets do Streamlit.")
+            st.stop()
+
         llm = ChatGroq(groq_api_key=minha_chave, model_name="llama3-8b-8192")
         
         qa_chain = RetrievalQA.from_chain_type(
