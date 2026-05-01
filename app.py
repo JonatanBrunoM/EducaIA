@@ -5,11 +5,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-# Importações diretas dos pacotes instalados (contornando o erro de módulo principal)
-from langchain.chains.retrieval import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import RetrievalQA  # Voltamos para a estável
 
 st.set_page_config(page_title="EducaIA - Assistente", layout="centered")
 
