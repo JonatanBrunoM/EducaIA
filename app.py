@@ -52,21 +52,27 @@ if all(os.path.exists(f) for f in LIVROS):
             chave = st.secrets["GROQ_API_KEY"]
             llm = ChatGroq(groq_api_key=chave, model_name="llama3-8b-8192")
             
-            # Versão simplificada da chain
-            qa_chain = RetrievalQA.from_chain_type(
-                llm=llm, 
-                chain_type="stuff", 
-                retriever=base.as_retriever()
-            )
+            # Definindo como a IA deve se comportar
+            prompt_template = ChatPromptTemplate.from_template("""
+            Responda à pergunta com base apenas no contexto fornecido (os ebooks):
+            <context>
+            {context}
+            </context>
+            Pergunta: {input}""")
+
+            # Criando a corrente de documentos e a de recuperação
+            document_chain = create_stuff_documents_chain(llm, prompt_template)
+            retrieval_chain = create_retrieval_chain(base.as_retriever(), document_chain)
             
             with st.chat_message("assistant"):
-                with st.spinner("Pensando..."):
-                    resposta = qa_chain.invoke(prompt) # Mudamos 'run' para 'invoke' (padrão novo)
-                    texto_resposta = resposta["result"] if isinstance(resposta, dict) else resposta
+                with st.spinner("Analisando livros..."):
+                    # Executando a busca e resposta
+                    response = retrieval_chain.invoke({"input": prompt})
+                    texto_resposta = response["answer"]
                     st.markdown(texto_resposta)
             
             st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
         except Exception as e:
-            st.error(f"Ocorreu um erro: {e}")
+            st.error(f"Erro na consulta: {e}")
 else:
     st.error("ERRO: Os PDFs não foram encontrados. Verifique se os nomes no GitHub estão como livro1.pdf, etc.")
