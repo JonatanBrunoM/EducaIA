@@ -6,8 +6,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# NOVA FORMA DE IMPORTAR A CHAIN (Evita o erro ModuleNotFoundError)
-from langchain.chains import create_retrieval_chain
+# Importações diretas dos pacotes instalados (contornando o erro de módulo principal)
+from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
