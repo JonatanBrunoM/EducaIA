@@ -50,7 +50,7 @@ if all(os.path.exists(f) for f in LIVROS):
 
         try:
             chave = st.secrets["GROQ_API_KEY"]
-            llm = ChatGroq(groq_api_key=chave, model_name="llama3-8b-8192")
+            llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant")
             
             # Definindo como a IA deve se comportar
             prompt_template = ChatPromptTemplate.from_template("""
