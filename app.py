@@ -12,22 +12,18 @@ from langchain_core.prompts import ChatPromptTemplate
 # 1. Configuração da Página
 st.set_page_config(page_title="EducaIA", page_icon="✨", layout="wide")
 
-# 2. CSS Estilo "Gemini" (Dark Sidebar + Clean Chat)
+# 2. CSS Estilo "Gemini" com ajuste de cor no Título
 st.markdown("""
     <style>
-    /* Sidebar com cor sólida e moderna */
     [data-testid="stSidebar"] {
         background-color: #1e1f20;
         border-right: 1px solid #333;
     }
     
-    /* Texto da Sidebar */
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1 {
         color: #e3e3e3 !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    /* Botões de Sugestão Estilo Pill */
     .stButton > button {
         border-radius: 20px;
         background-color: #2b2c2e;
@@ -45,20 +41,35 @@ st.markdown("""
         color: #a8c7fa;
     }
 
-    /* Esconder elementos nativos */
     .stDeployButton {display:none;}
     footer {visibility: hidden;}
     
-    /* Título centralizado estilo Boas-vindas */
+    /* --- ALTERE AQUI: Estilização do Título de Boas-vindas --- */
     .welcome-text {
         text-align: center;
         margin-top: 15vh;
-        color: #1f1f1f;
     }
+    
+    /* Aqui definimos um gradiente para o título não sumir no fundo escuro */
+    .welcome-title {
+        font-size: 50px;
+        font-weight: 600;
+        background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+    }
+
+    .welcome-subtitle {
+        font-size: 22px;
+        color: #888; /* Cor cinza suave que funciona em ambos os temas */
+    }
+    /* -------------------------------------------------------- */
     </style>
     """, unsafe_allow_html=True)
 
 # --- CONFIGURAÇÃO DA BIBLIOTECA ---
+# ALTERE AQUI: Adicione novos nomes de arquivos nesta lista
 LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
 
 @st.cache_resource
@@ -82,12 +93,14 @@ if "sugestao_clicada" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
+    # ALTERE AQUI: Título da Sidebar
     st.markdown("<h1 style='font-size: 25px;'>✨ EducaIA</h1>", unsafe_allow_html=True)
     st.markdown("<p style='font-size: 14px;'>Seu assistente acadêmico</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.subheader("Sugestões")
     
+    # ALTERE AQUI: Texto dos botões e a pergunta que eles disparam
     if st.button("🚀 Evolução das Tecnologias"):
         st.session_state.sugestao_clicada = "Fale sobre a evolução das tecnologias digitais na gestão em saúde."
 
@@ -97,6 +110,7 @@ with st.sidebar:
     if st.button("📝 Simulado"):
         st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha para eu treinar."
 
+    # Botão de limpar no rodapé da sidebar
     st.markdown("<div style='position: fixed; bottom: 20px; width: 260px;'>", unsafe_allow_html=True)
     if st.button("🗑️ Limpar Chat"):
         st.session_state.messages = []
@@ -112,24 +126,22 @@ else:
 
 # --- ÁREA DE CHAT ---
 
-# Se não houver conversa, mostra tela de boas-vindas
+# ALTERE AQUI: Conteúdo da tela de boas-vindas
 if not st.session_state.messages:
     st.markdown("""
         <div class="welcome-text">
-            <h1 style='font-size: 45px; font-weight: 500;'>Olá! Eu sou o EducaIA</h1>
-            <p style='font-size: 20px; color: #444746;'>Como posso ajudar nos seus estudos hoje?</p>
+            <h1 class="welcome-title">Olá! Eu sou o EducaIA</h1>
+            <p class="welcome-subtitle">Como posso ajudar nos seus estudos hoje?</p>
         </div>
         """, unsafe_allow_html=True)
 
-# Exibe histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Captura input
-input_usuario = st.chat_input("Digite uma pergunta ou use as sugestões ao lado...")
+input_usuario = st.chat_input("Digite uma pergunta...")
 
-# Lógica de resposta (Verifica input manual ou botão da sidebar)
+# Lógica de resposta
 prompt_final = None
 if st.session_state.sugestao_clicada:
     prompt_final = st.session_state.sugestao_clicada
@@ -138,18 +150,17 @@ elif input_usuario:
     prompt_final = input_usuario
 
 if prompt_final:
-    # Adiciona e mostra mensagem do usuário
     st.session_state.messages.append({"role": "user", "content": prompt_final})
     with st.chat_message("user"):
         st.markdown(prompt_final)
 
-    # Gera a resposta
     try:
         chave = st.secrets["GROQ_API_KEY"]
         llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant", temperature=0.3)
         
+        # ALTERE AQUI: Instruções de personalidade da IA
         prompt_template = ChatPromptTemplate.from_template("""
-        Você é o EducaIA, um tutor especializado. Use o contexto para responder.
+        Você é o EducaIA, um tutor especializado. Use o contexto para responder de forma clara.
         Contexto: {context}
         Pergunta: {input}
         """)
@@ -164,7 +175,6 @@ if prompt_final:
                 st.markdown(texto_resposta)
                 st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
                 
-        # Força uma atualização para sumir com o título de boas-vindas se for a primeira msg
         if len(st.session_state.messages) <= 2:
             st.rerun()
 
