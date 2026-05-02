@@ -10,49 +10,51 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
 # 1. Configuração da Página
-st.set_page_config(page_title="EducaIA | Tutor Inteligente", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="EducaIA", page_icon="✨", layout="wide")
 
-# 2. CSS Personalizado para Cor da Sidebar e Efeito Centralizado
+# 2. CSS Estilo "Gemini" (Dark Sidebar + Clean Chat)
 st.markdown("""
     <style>
-    /* Cor de fundo da Sidebar (Azul Escuro Profissional) */
+    /* Sidebar com cor sólida e moderna */
     [data-testid="stSidebar"] {
-        background-color: #1E1E2F;
-        color: white;
+        background-color: #1e1f20;
+        border-right: 1px solid #333;
     }
     
-    /* Ajuste da cor dos textos na Sidebar */
-    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #FFFFFF !important;
+    /* Texto da Sidebar */
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h1 {
+        color: #e3e3e3 !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    /* Estilização dos botões da Sidebar */
-    div.stButton > button {
-        background-color: #3D3D5C;
-        color: white;
-        border-radius: 10px;
-        border: none;
+    /* Botões de Sugestão Estilo Pill */
+    .stButton > button {
+        border-radius: 20px;
+        background-color: #2b2c2e;
+        color: #c4c7c5;
+        border: 1px solid #444746;
         width: 100%;
-        transition: 0.3s;
+        text-align: left;
+        padding: 10px 20px;
+        margin-bottom: 5px;
     }
-    div.stButton > button:hover {
-        background-color: #57578A;
-        color: #00FFCC;
-    }
-
-    /* Centralização do Título quando não há chat */
-    .welcome-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 60vh;
-        text-align: center;
+    
+    .stButton > button:hover {
+        background-color: #333537;
+        border-color: #a8c7fa;
+        color: #a8c7fa;
     }
 
-    /* Esconder o botão de deploy padrão */
+    /* Esconder elementos nativos */
     .stDeployButton {display:none;}
     footer {visibility: hidden;}
+    
+    /* Título centralizado estilo Boas-vindas */
+    .welcome-text {
+        text-align: center;
+        margin-top: 15vh;
+        color: #1f1f1f;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -72,13 +74,19 @@ def processar_base():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.from_documents(textos, embeddings)
 
+# --- INICIALIZAÇÃO DO ESTADO ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "sugestao_clicada" not in st.session_state:
+    st.session_state.sugestao_clicada = None
+
 # --- BARRA LATERAL ---
 with st.sidebar:
-    st.markdown("## 🤖 EducaIA")
-    st.caption("Versão 2.0 - Banco de Dados Acadêmico")
-    st.markdown("---")
+    st.markdown("<h1 style='font-size: 25px;'>✨ EducaIA</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px;'>Seu assistente acadêmico</p>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    st.subheader("💡 Sugestões")
+    st.subheader("Sugestões")
     
     if st.button("🚀 Evolução das Tecnologias"):
         st.session_state.sugestao_clicada = "Fale sobre a evolução das tecnologias digitais na gestão em saúde."
@@ -89,67 +97,60 @@ with st.sidebar:
     if st.button("📝 Simulado"):
         st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha para eu treinar."
 
-    st.markdown("---")
+    st.markdown("<div style='position: fixed; bottom: 20px; width: 260px;'>", unsafe_allow_html=True)
     if st.button("🗑️ Limpar Chat"):
         st.session_state.messages = []
         st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- MOTOR DE INTELIGÊNCIA ---
+# --- MOTOR DE IA ---
 if any(os.path.exists(f) for f in LIVROS):
     base = processar_base()
 else:
     st.error("Banco de dados não localizado.")
     st.stop()
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- ÁREA DE CHAT ---
 
-# Captura clique de sugestão
-prompt_final = None
-if "sugestao_clicada" in st.session_state and st.session_state.sugestao_clicada:
-    prompt_final = st.session_state.sugestao_clicada
-    st.session_state.sugestao_clicada = None 
-
-# --- ÁREA CENTRAL / CHAT ---
-
-# Se não houver mensagens, mostra o título centralizado
+# Se não houver conversa, mostra tela de boas-vindas
 if not st.session_state.messages:
     st.markdown("""
-        <div class="welcome-container">
-            <h1 style='font-size: 3rem;'>📚 Como posso ajudar?</h1>
-            <p style='font-size: 1.2rem; color: #666;'>Consulte o material da disciplina agora mesmo.</p>
+        <div class="welcome-text">
+            <h1 style='font-size: 45px; font-weight: 500;'>Olá! Eu sou o EducaIA</h1>
+            <p style='font-size: 20px; color: #444746;'>Como posso ajudar nos seus estudos hoje?</p>
         </div>
         """, unsafe_allow_html=True)
-else:
-    st.title("📚 Central de Conhecimento")
 
-# Exibe mensagens do histórico
+# Exibe histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Input de chat (sempre no rodapé por padrão do Streamlit)
-input_usuario = st.chat_input("Digite sua pergunta...")
+# Captura input
+input_usuario = st.chat_input("Digite uma pergunta ou use as sugestões ao lado...")
 
-if input_usuario or prompt_final:
-    texto_da_pergunta = input_usuario if input_usuario else prompt_final
-    st.session_state.messages.append({"role": "user", "content": texto_da_pergunta})
-    
-    # Recarrega para aplicar a mudança de layout (sair do centro)
-    if len(st.session_state.messages) == 1:
-        st.rerun()
+# Lógica de resposta (Verifica input manual ou botão da sidebar)
+prompt_final = None
+if st.session_state.sugestao_clicada:
+    prompt_final = st.session_state.sugestao_clicada
+    st.session_state.sugestao_clicada = None
+elif input_usuario:
+    prompt_final = input_usuario
 
+if prompt_final:
+    # Adiciona e mostra mensagem do usuário
+    st.session_state.messages.append({"role": "user", "content": prompt_final})
     with st.chat_message("user"):
-        st.markdown(texto_da_pergunta)
+        st.markdown(prompt_final)
 
+    # Gera a resposta
     try:
         chave = st.secrets["GROQ_API_KEY"]
         llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant", temperature=0.3)
         
         prompt_template = ChatPromptTemplate.from_template("""
-        Você é o EducaIA, um tutor acadêmico especializado.
-        Responda ESTRITAMENTE com base no contexto:
-        {context}
+        Você é o EducaIA, um tutor especializado. Use o contexto para responder.
+        Contexto: {context}
         Pergunta: {input}
         """)
 
@@ -157,10 +158,15 @@ if input_usuario or prompt_final:
         retrieval_chain = create_retrieval_chain(base.as_retriever(), document_chain)
         
         with st.chat_message("assistant"):
-            with st.spinner("Analisando materiais..."):
-                response = retrieval_chain.invoke({"input": texto_da_pergunta})
+            with st.spinner("Pensando..."):
+                response = retrieval_chain.invoke({"input": prompt_final})
                 texto_resposta = response["answer"]
                 st.markdown(texto_resposta)
-        st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
+                st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
+                
+        # Força uma atualização para sumir com o título de boas-vindas se for a primeira msg
+        if len(st.session_state.messages) <= 2:
+            st.rerun()
+
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro na conexão: {e}")
