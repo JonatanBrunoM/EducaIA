@@ -31,7 +31,6 @@ bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 # 2. CSS Ajustado
 st.markdown(f"""
     <style>
-    /* Estilo para o container do botão de limpar no topo */
     .sidebar-top-button {{
         padding-top: 10px;
         padding-bottom: 20px;
@@ -124,7 +123,6 @@ if "sugestao_clicada" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    # Cabeçalho
     st.markdown(f"""
         <div class="sidebar-header">
             <img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo">
@@ -134,7 +132,6 @@ with st.sidebar:
     
     st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
 
-    # BOTÃO LIMPAR FIXO LOGO ABAIXO DO TEXTO
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
@@ -142,7 +139,6 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
-    # Lista de Sugestões
     sugestoes = {
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
         "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
@@ -169,6 +165,10 @@ else:
     st.error("Banco de dados não localizado.")
     st.stop()
 
+# Definição dos Avatares
+AVATAR_USER = "👤"
+AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
+
 if not st.session_state.messages:
     st.markdown(f"""
         <div class="welcome-text">
@@ -177,8 +177,10 @@ if not st.session_state.messages:
         </div>
         """, unsafe_allow_html=True)
 
+# Exibição do histórico com Avatares Personalizados
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
 input_usuario = st.chat_input("Pergunta ao EducaIA...")
@@ -189,7 +191,7 @@ if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
 if prompt_final:
     st.session_state.messages.append({"role": "user", "content": prompt_final})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=AVATAR_USER):
         st.markdown(prompt_final)
 
     try:
@@ -199,7 +201,7 @@ if prompt_final:
         document_chain = create_stuff_documents_chain(llm, prompt_template)
         retrieval_chain = create_retrieval_chain(base.as_retriever(), document_chain)
         
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=AVATAR_AI):
             with st.spinner("Pesquisando..."):
                 response = retrieval_chain.invoke({"input": prompt_final})
                 st.markdown(response["answer"])
