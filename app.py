@@ -102,7 +102,7 @@ st.markdown(f"""
     .welcome-title {{
         font-size: 50px;
         font-weight: 600;
-        background: linear-gradient(90deg, #296c98, #1e86c8, #8ac5e2);
+        background: linear-gradient(90deg, #1e86c8, ##71a8ca, #8ac5e2);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }}
