@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper # Import para busca
+from duckduckgo_search import DDGS # Import corrigido para evitar erro de datetime
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -17,9 +17,6 @@ st.set_page_config(
     page_icon="logomini.png", 
     layout="wide"
 )
-
-# Inicializador da busca externa
-ddg_search = DuckDuckGoSearchAPIWrapper()
 
 def get_base64_of_bin_file(bin_file):
     try:
@@ -119,13 +116,15 @@ AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 if not st.session_state.messages:
     st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Como posso ajudar nos teus estudos hoje?</p></div>', unsafe_allow_html=True)
 
+# Exibição do histórico
 for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar=(AVATAR_AI if message["role"] == "assistant" else AVATAR_USER)):
+    avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
         if "image_url" in message:
             st.image(message["image_url"], caption="Exemplo visual encontrado")
 
-input_usuario = st.chat_input("Pergunte algo ou peça uma imagem (ex: 'Me mostre uma foto de...')")
+input_usuario = st.chat_input("Pergunte algo ou peça uma imagem...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
@@ -142,21 +141,21 @@ if prompt_final:
                 
                 # Lógica: Busca Imagem ou Busca PDF?
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
-                    # Busca imagem no DuckDuckGo (estratégia de link direto)
-                    search_query = f"{prompt_final} filetype:jpg"
-                    results = ddg_search.results(search_query, max_results=3)
+                    with DDGS() as ddgs:
+                        search_query = f"{prompt_final} health technology"
+                        results = [r for r in ddgs.images(search_query, max_results=1)]
                     
                     if results:
-                        # Pegamos o primeiro link que pareça uma imagem
-                        img_url = results[0]['link']
-                        resposta_texto = f"Encontrei uma imagem relacionada a '{prompt_final}'. Veja abaixo:"
+                        img_url = results[0]['image']
+                        resposta_texto = f"Encontrei uma imagem relacionada a '{prompt_final}':"
                         st.markdown(resposta_texto)
                         st.image(img_url)
                         st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_url})
                     else:
                         st.markdown("Não consegui encontrar uma imagem específica no momento.")
+                        st.session_state.messages.append({"role": "assistant", "content": "Não consegui encontrar uma imagem específica no momento."})
                 else:
-                    # Busca padrão nos PDFs
+                    # Busca padrão nos PDFs (RAG)
                     prompt_template = ChatPromptTemplate.from_template("Responda em PT-BR usando o contexto: {context}\nPergunta: {input}")
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
@@ -165,4 +164,4 @@ if prompt_final:
                 
                 if len(st.session_state.messages) <= 2: st.rerun()
             except Exception as e:
-                st.error(f"Erro: {e}")
+                st.error(f"Erro ao processar: {e}")
