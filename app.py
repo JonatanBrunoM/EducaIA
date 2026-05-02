@@ -138,17 +138,27 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<p style='font-size: 14px; opacity: 0.7;'>Assistente Académico Digital</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px; opacity: 0.7;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.subheader("Sugestões")
-    if st.button("🚀 Evolução das Tecnologias"):
+    if st.button("📑 Evolução das Tecnologias"):
         st.session_state.sugestao_clicada = "Fale sobre a evolução das tecnologias digitais na gestão em saúde."
-    if st.button("📑 Conceitos Chave"):
-        st.session_state.sugestao_clicada = "Quais os conceitos fundamentais do material?"
-    if st.button("📝 Simulado"):
-        st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha para eu treinar."
-
+    if st.button("📑 Incorporação de tecnologias"):
+        st.session_state.sugestao_clicada = "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde."
+    if st.button("📑 Destaque dos principais marcos"):
+        st.session_state.sugestao_clicada = "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde."
+    if st.button("📑 Cibercultura e suas relações"):
+        st.session_state.sugestao_clicada = "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde."
+    if st.button("📑 Princípios básicos da cibercultura"):
+        st.session_state.sugestao_clicada = "Aborde os princípios básicos da cibercultura."
+    if st.button("📑 Características e fluxos de comunicação"):
+        st.session_state.sugestao_clicada = "Fale sobre características e fluxos de comunicação."
+    if st.button("📑 Aplicativos utilizados na área"):
+        st.session_state.sugestao_clicada = "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios."
+    if st.button("📑 Presença da tecnologia no cotidiano"):
+        st.session_state.sugestao_clicada = "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia."
+    
     # Espaço dinâmico para empurrar o botão para baixo
     st.markdown('<div class="sidebar-footer-container">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
