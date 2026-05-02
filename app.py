@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import io
 import base64
 import requests
 from fpdf import FPDF  # Necessário: pip install fpdf2
@@ -30,18 +31,22 @@ def get_base64_of_bin_file(bin_file):
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# --- FUNÇÃO GERADORA DE PDF ---
+# --- FUNÇÃO GERADORA DE PDF (CORRIGIDA) ---
 def gerar_pdf_resumo(texto):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(200, 10, txt="EducaIA - Resumo Acadêmico", ln=True, align='C')
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 10, txt="EducaIA - Resumo Acadêmico", ln=True, align='C')
     pdf.ln(10)
-    pdf.set_font("Arial", size=12)
-    # Limpeza básica para evitar erros de caractere no PDF
+    pdf.set_font("Helvetica", size=12)
+    
+    # Limpeza para evitar erros de caracteres latinos no PDF (latin-1)
     texto_limpo = texto.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 10, txt=texto_limpo)
-    return pdf.output(dest='S')
+    
+    # Retorna como bytes puros para o Streamlit não dar erro de bytearray
+    pdf_bytes = pdf.output()
+    return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
 # 2. CSS
 st.markdown(f"""
@@ -109,18 +114,35 @@ with st.sidebar:
         st.session_state.ultimo_resumo = None
         st.rerun()
     
-    # FUNCIONALIDADE 2: BOTÃO DE RESUMO
     if st.button("📄 Gerar Resumo para Download"):
         st.session_state.sugestao_clicada = "Gere um resumo estruturado e detalhado dos pontos principais dos documentos para exportação em PDF."
     
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
+
     sugestoes = {
+
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
+
+        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
+
+        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
+
         "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-        "📑 Aplicativos na Saúde": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-        "📑 Tecnologias emergentes": "Fale sobre a inteligência artificial, robótica e IoT na saúde."
+
+        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
+
+        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
+
+        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+
+        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
+
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
@@ -167,7 +189,6 @@ if prompt_final:
                 
                 img_urls_list = []
                 
-                # 1. BUSCA DE IMAGEM
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
@@ -184,9 +205,7 @@ if prompt_final:
                             st.session_state.messages.append({"role": "assistant", "content": f"Imagens sobre {prompt_final}", "image_url": img_urls_list})
                     except: pass
 
-                # 2. RESPOSTA TEXTUAL + GLOSSÁRIO
                 if not img_urls_list:
-                    # Prompt que solicita o GLOSSÁRIO ao final
                     prompt_template = ChatPromptTemplate.from_template(
                         "Você é um tutor amigável. Responda em PT-BR usando o contexto: {context}\n"
                         "Ao final da sua explicação, se houver termos técnicos complicados, "
@@ -200,12 +219,11 @@ if prompt_final:
                     st.markdown(full_text)
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
                     
-                    # Se foi pedido resumo, guarda para o botão de PDF
                     if "resumo" in prompt_final.lower():
                         st.session_state.ultimo_resumo = full_text
 
-                # Exibe botão de download se houver resumo
                 if st.session_state.ultimo_resumo:
+                    # Gera os bytes do PDF
                     pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
                     st.download_button(
                         label="📥 Baixar Resumo em PDF",
