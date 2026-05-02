@@ -31,7 +31,7 @@ def get_base64_of_bin_file(bin_file):
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# --- FUNÇÃO GERADORA DE PDF (CORRIGIDA PARA BYTES) ---
+# --- FUNÇÃO GERADORA DE PDF ---
 def gerar_pdf_resumo(texto):
     pdf = FPDF()
     pdf.add_page()
@@ -39,44 +39,19 @@ def gerar_pdf_resumo(texto):
     pdf.cell(0, 10, txt="EducaIA - Resumo da Conversa", ln=True, align='C')
     pdf.ln(10)
     pdf.set_font("Helvetica", size=12)
-    
-    # Limpeza para evitar erros de caracteres latinos no PDF (latin-1)
     texto_limpo = texto.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 10, txt=texto_limpo)
-    
-    # Retorna como bytes puros para o Streamlit
     pdf_bytes = pdf.output()
     return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
 # 2. CSS
 st.markdown(f"""
     <style>
-    .sidebar-top-button {{
-        padding-top: 10px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-        margin-bottom: 20px;
-    }}
-    [data-testid="stSidebarCollapseByArrow"] svg {{ display: none; }}
-    [data-testid="stSidebarCollapseByArrow"]::after {{
-        content: "☰"; font-size: 24px; font-weight: bold; display: flex; justify-content: center; align-items: center;
-    }}
-    .faculdade-logo {{
-        position: absolute; top: -55px; left: 50px; width: 150px; z-index: 99;
-    }}
-    .sidebar-header {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }}
-    .sidebar-logo {{ width: 35px; height: auto; }}
-    .stButton > button {{
-        border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px;
-    }}
-    .stButton > button:hover {{ border-color: #1e86c8; color: #1e86c8; }}
-    .stDeployButton {{display:none;}}
-    footer {{visibility: hidden;}}
+    .sidebar-top-button {{ padding-top: 10px; padding-bottom: 20px; border-bottom: 1px solid rgba(128, 128, 128, 0.2); margin-bottom: 20px; }}
+    .faculdade-logo {{ position: absolute; top: -55px; left: 50px; width: 150px; z-index: 99; }}
+    .stButton > button {{ border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px; }}
     .welcome-text {{ text-align: center; margin-top: 15vh; }}
-    .welcome-title {{
-        font-size: 50px; font-weight: 600; background: linear-gradient(90deg, #1e86c8, #8ac5e2);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }}
+    .welcome-title {{ font-size: 50px; font-weight: 600; background: linear-gradient(90deg, #1e86c8, #8ac5e2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -105,60 +80,24 @@ if "ultimo_resumo" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
-    st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
-    
+    st.markdown(f'# EducaIA')
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
         st.session_state.ultimo_resumo = None
         st.rerun()
     
-    # LÓGICA DE RESUMO DA CONVERSA (HISTÓRICO)
     if st.button("📄 Baixar conversa"):
         if len(st.session_state.messages) > 0:
-            conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+            conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
             st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
         else:
             st.warning("Inicie uma conversa para poder resumir!")
-    
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    st.subheader("Sugestões")
-
-    sugestoes = {
-
-        "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-
-        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
-
-        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
-
-        "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-
-        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
-
-        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
-
-        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
-
-        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-
-        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
-
-    }
-    for label, prompt in sugestoes.items():
-        if st.button(label): st.session_state.sugestao_clicada = prompt
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
-
 base = processar_base()
-if not base:
-    st.error("Banco de dados não localizado.")
-    st.stop()
 
 AVATAR_USER = "👤"
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
@@ -166,10 +105,15 @@ AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 if not st.session_state.messages:
     st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">O que vamos aprender hoje?</p></div>', unsafe_allow_html=True)
 
+# EXIBIÇÃO DO HISTÓRICO (COM SUPORTE A IMAGENS)
 for message in st.session_state.messages:
     avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
+        if "image_urls" in message:
+            cols = st.columns(len(message["image_urls"]))
+            for idx, url in enumerate(message["image_urls"]):
+                cols[idx].image(url, use_container_width=True)
 
 input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
@@ -186,12 +130,25 @@ if prompt_final:
                 chave_groq = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.3)
                 
-                # Se for pedido de resumo do histórico, usa o LLM direto sem busca nos PDFs
+                # --- 1. LÓGICA DE BUSCA DE IMAGEM ---
+                img_urls_list = []
+                if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
+                    try:
+                        serper_key = st.secrets["SERPER_API_KEY"]
+                        url_serper = "https://google.serper.dev/images"
+                        payload = {"q": prompt_final, "num": 3}
+                        headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
+                        response_serper = requests.post(url_serper, headers=headers, json=payload)
+                        search_results = response_serper.json()
+                        if search_results.get('images'):
+                            img_urls_list = [img['imageUrl'] for img in search_results['images']]
+                    except: pass
+
+                # --- 2. LÓGICA DE TEXTO ---
                 if "nossa conversa abaixo" in prompt_final:
                     resposta_texto = llm.invoke(prompt_final).content
                     st.session_state.ultimo_resumo = resposta_texto
                 else:
-                    # Busca normal via RAG nos arquivos PDF
                     prompt_template = ChatPromptTemplate.from_template(
                         "Você é um tutor amigável. Responda em PT-BR usando o contexto: {context}\n"
                         "Ao final, se houver termos técnicos, adicione um '📚 Glossário'.\n"
@@ -201,14 +158,26 @@ if prompt_final:
                     response = chain.invoke({"input": prompt_final})
                     resposta_texto = response["answer"]
 
-                st.markdown(resposta_texto)
-                st.session_state.messages.append({"role": "assistant", "content": resposta_texto})
+                # Exibe as imagens se houver
+                if img_urls_list:
+                    st.markdown(f"Encontrei estas imagens sobre '{prompt_final}':")
+                    cols = st.columns(len(img_urls_list))
+                    for idx, url in enumerate(img_urls_list):
+                        cols[idx].image(url, use_container_width=True)
                 
-                if len(st.session_state.messages) <= 2: st.rerun()
+                # Exibe o texto
+                st.markdown(resposta_texto)
+                
+                # Salva no histórico (Texto + Imagens)
+                history_entry = {"role": "assistant", "content": resposta_texto}
+                if img_urls_list:
+                    history_entry["image_urls"] = img_urls_list
+                st.session_state.messages.append(history_entry)
+
+                st.rerun()
             except Exception as e:
                 st.error(f"Erro ao processar: {e}")
 
-# Botão de download condicional (aparece se houver um resumo gerado)
 if st.session_state.ultimo_resumo:
     st.divider()
     pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
