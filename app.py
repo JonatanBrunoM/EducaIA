@@ -58,7 +58,7 @@ st.markdown(f"""
     /* Ajuste de margem para a logo da faculdade não cobrir o menu */
     .faculdade-logo {{
         position: absolute;
-        top: -60px;
+        top: -55px;
         left: 50px; /* Aumentei um pouco para dar espaço ao botão de menu */
         width: 150px;
         z-index: 99;
@@ -102,7 +102,7 @@ st.markdown(f"""
     .welcome-title {{
         font-size: 50px;
         font-weight: 600;
-        background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+        background: linear-gradient(90deg, ##296c98, ##1e86c8, ##8ac5e2);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }}
