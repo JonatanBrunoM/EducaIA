@@ -120,31 +120,25 @@ with st.sidebar:
             st.warning("Inicie uma conversa primeiro!")
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # SEÇÃO DE SUGESTÕES (Título Corrigido)
+    st.subheader("Sugestões")
+    
     sugestoes = {
-
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-
         "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
-
         "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
-
         "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-
         "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
-
         "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
-
         "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-
         "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
-
         "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-
         "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
-
     }
+    
     for label, prompt in sugestoes.items():
-        if st.button(label): st.session_state.sugestao_clicada = prompt
+        if st.button(label): 
+            st.session_state.sugestao_clicada = prompt
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
