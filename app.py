@@ -72,12 +72,13 @@ def processar_base():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.from_documents(textos, embeddings)
 
+# Inicialização de estados
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "sugestao_clicada" not in st.session_state:
     st.session_state.sugestao_clicada = None
-if "quiz_atual" not in st.session_state:
-    st.session_state.quiz_atual = None
+if "quiz_data" not in st.session_state:
+    st.session_state.quiz_data = None
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -87,13 +88,13 @@ with st.sidebar:
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
-        st.session_state.quiz_atual = None
+        st.session_state.quiz_data = None
         st.rerun()
     
-    # FUNCIONALIDADE 1: BOTÃO DE QUIZ INTERATIVO
+    # FUNCIONALIDADE 1: GERAR QUIZ
     if st.button("🧠 Gerar Quiz Interativo"):
-        st.session_state.quiz_atual = None # Limpa quiz anterior
-        st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
+        st.session_state.quiz_data = None # Reseta quiz anterior
+        st.session_state.sugestao_clicada = "Gere um quiz de múltipla escolha. Formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
@@ -116,22 +117,15 @@ if not base:
 AVATAR_USER = "👤"
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
-if not st.session_state.messages:
+if not st.session_state.messages and not st.session_state.quiz_data:
     st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Vamos transformar seus PDFs em conhecimento?</p></div>', unsafe_allow_html=True)
 
-# Exibição do Histórico
+# Exibição do Histórico (sem repetir o quiz ativo no histórico para não bugar)
 for message in st.session_state.messages:
-    avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
-    with st.chat_message(message["role"], avatar=avatar):
+    with st.chat_message(message["role"], avatar=AVATAR_AI if message["role"] == "assistant" else AVATAR_USER):
         st.markdown(message["content"])
-        if "image_url" in message:
-            if isinstance(message["image_url"], list):
-                cols = st.columns(len(message["image_url"]))
-                for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
-            else:
-                st.image(message["image_url"])
 
-input_usuario = st.chat_input("Pergunte algo ou peça uma imagem...")
+input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
@@ -141,82 +135,56 @@ if prompt_final:
         st.markdown(prompt_final)
 
     with st.chat_message("assistant", avatar=AVATAR_AI):
-        with st.spinner("Processando..."):
+        with st.spinner("Buscando informações..."):
             try:
                 chave_groq = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.4)
                 
-                img_urls_list = []
-                
-                # 1. Lógica de Imagem
-                if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
-                    try:
-                        serper_key = st.secrets["SERPER_API_KEY"]
-                        url_serper = "https://google.serper.dev/images"
-                        payload = {"q": prompt_final, "num": 3}
-                        headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
-                        res = requests.post(url_serper, headers=headers, json=payload)
-                        search_results = res.json()
-                        if search_results.get('images'):
-                            img_urls_list = [img['imageUrl'] for img in search_results['images']]
-                            st.markdown(f"Imagens encontradas para: {prompt_final}")
-                            cols = st.columns(len(img_urls_list))
-                            for idx, url in enumerate(img_urls_list): cols[idx].image(url)
-                            st.session_state.messages.append({"role": "assistant", "content": f"Galeria sobre {prompt_final}", "image_url": img_urls_list})
-                    except: pass
+                # RAG
+                prompt_template = ChatPromptTemplate.from_template("Use o contexto: {context}\nPergunta: {input}")
+                chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
+                response = chain.invoke({"input": prompt_final})
+                resposta_texto = response["answer"]
 
-                # 2. Lógica de Texto / Quiz Interativo
-                if not img_urls_list:
-                    is_quiz = "múltipla escolha" in prompt_final.lower() or "flashcard" in prompt_final.lower()
-                    
-                    prompt_template = ChatPromptTemplate.from_template(
-                        "Você é um tutor acadêmico. Responda em PT-BR usando o contexto: {context}\n"
-                        "Pergunta: {input}"
-                    )
-                    
-                    chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
-                    response = chain.invoke({"input": prompt_final})
-                    full_text = response["answer"]
-                    
-                    # Processamento do Quiz Interativo
-                    if is_quiz and "|" in full_text:
-                        try:
-                            # Divide a resposta da IA nos componentes do quiz
-                            partes = full_text.split("|")
-                            pergunta = partes[0].replace("PERGUNTA:", "").strip()
-                            opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
-                            correta = partes[4].replace("CORRETA:", "").strip().upper()
-                            
-                            # Salva no estado para o Streamlit não perder no clique do radio
-                            st.session_state.quiz_atual = {"p": pergunta, "o": opcoes, "c": correta}
-                        except:
-                            st.markdown(full_text) # Fallback se a IA errar o formato
-                    else:
-                        st.markdown(full_text)
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": full_text})
-
-                # Renderização da interface de resposta do Quiz (se houver um quiz ativo)
-                if st.session_state.quiz_atual:
-                    q = st.session_state.quiz_atual
-                    st.markdown(f"### 📝 Desafio: {q['p']}")
-                    
-                    # Cria os botões de opção
-                    escolha = st.radio("Selecione a alternativa correta:", q['o'], index=None, key="quiz_radio")
-                    
-                    if escolha:
-                        # Verifica se a letra inicial da escolha (A, B ou C) bate com a CORRETA
-                        letra_usuario = escolha[0].upper()
-                        if letra_usuario == q['c']:
-                            st.success(f"🎯 Excelente! A alternativa {q['c']} está correta.")
-                        else:
-                            st.error(f"❌ Não foi dessa vez. Você marcou {letra_usuario}, mas a correta é a {q['c']}.")
+                # Lógica de Captura do Quiz
+                if "|" in resposta_texto and "PERGUNTA:" in resposta_texto.upper():
+                    partes = resposta_texto.split("|")
+                    if len(partes) >= 5:
+                        pergunta = partes[0].replace("PERGUNTA:", "").strip()
+                        opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
+                        correta_texto = partes[4].upper()
+                        # Extrai apenas a letra A, B ou C
+                        correta = "A" if "A" in correta_texto else "B" if "B" in correta_texto else "C"
                         
-                        # Limpa o quiz após responder para não ficar travado na tela
-                        if st.button("Próxima pergunta"):
-                            st.session_state.quiz_atual = None
-                            st.rerun()
-
-                if len(st.session_state.messages) <= 2: st.rerun()
+                        st.session_state.quiz_data = {"p": pergunta, "o": opcoes, "c": correta}
+                        st.markdown("Preparei um quiz para você abaixo:")
+                    else:
+                        st.markdown(resposta_texto)
+                else:
+                    st.markdown(resposta_texto)
+                    st.session_state.messages.append({"role": "assistant", "content": resposta_texto})
+                
+                st.rerun() # Força o Streamlit a renderizar o rádio do quiz
             except Exception as e:
                 st.error(f"Erro: {e}")
+
+# Renderização do Quiz Ativo (fora do loop de mensagens para ser interativo)
+if st.session_state.quiz_data:
+    with st.chat_message("assistant", avatar=AVATAR_AI):
+        q = st.session_state.quiz_data
+        st.markdown(f"### 📝 DESAFIO\n**{q['p']}**")
+        
+        escolha = st.radio("Selecione a opção correta:", q['o'], index=None, key="radio_quiz")
+        
+        if escolha:
+            letra_escolhida = escolha[0].upper()
+            if letra_escolhida == q['c']:
+                st.success(f"✅ Correto! A resposta certa é a {q['c']}.")
+            else:
+                st.error(f"❌ Incorreto. Você marcou {letra_escolhida}, mas a resposta certa é a {q['c']}.")
+            
+            if st.button("Finalizar e Salvar"):
+                resultado = f"Quiz Respondido: {q['p']} (Correta: {q['c']})"
+                st.session_state.messages.append({"role": "assistant", "content": resultado})
+                st.session_state.quiz_data = None
+                st.rerun()
