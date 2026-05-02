@@ -9,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
-from duckduckgo_search import DDGS # Import corrigido para evitar erro de datetime
+from duckduckgo_search import DDGS 
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -93,11 +93,29 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
+
     sugestoes = {
+
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos.",
+
+        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
+
+        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
+
+        "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
+
+        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
+
+        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
+
+        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+
         "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-        "📑 Ver Imagem: Telemedicina": "Mostre uma imagem de um sistema de telemedicina em funcionamento."
+
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
@@ -116,7 +134,6 @@ AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 if not st.session_state.messages:
     st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Como posso ajudar nos teus estudos hoje?</p></div>', unsafe_allow_html=True)
 
-# Exibição do histórico
 for message in st.session_state.messages:
     avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
     with st.chat_message(message["role"], avatar=avatar):
@@ -139,24 +156,35 @@ if prompt_final:
                 chave = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant", temperature=0.3)
                 
-                # Lógica: Busca Imagem ou Busca PDF?
+                # Inicia Variáveis de Resposta
+                img_url = None
+                
+                # TENTATIVA DE BUSCA DE IMAGEM
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
-                    with DDGS() as ddgs:
-                        search_query = f"{prompt_final} health technology"
-                        results = [r for r in ddgs.images(search_query, max_results=1)]
-                    
-                    if results:
-                        img_url = results[0]['image']
-                        resposta_texto = f"Encontrei uma imagem relacionada a '{prompt_final}':"
-                        st.markdown(resposta_texto)
-                        st.image(img_url)
-                        st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_url})
-                    else:
-                        st.markdown("Não consegui encontrar uma imagem específica no momento.")
-                        st.session_state.messages.append({"role": "assistant", "content": "Não consegui encontrar uma imagem específica no momento."})
-                else:
-                    # Busca padrão nos PDFs (RAG)
-                    prompt_template = ChatPromptTemplate.from_template("Responda em PT-BR usando o contexto: {context}\nPergunta: {input}")
+                    try:
+                        with DDGS() as ddgs:
+                            search_query = f"{prompt_final} health technology medical"
+                            results = [r for r in ddgs.images(search_query, max_results=1)]
+                        
+                        if results:
+                            img_url = results[0]['image']
+                            resposta_texto = f"Encontrei uma imagem relacionada a '{prompt_final}':"
+                            st.markdown(resposta_texto)
+                            st.image(img_url)
+                            st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_url})
+                        else:
+                            st.warning("Não encontrei imagens disponíveis no momento. Vou explicar o conceito:")
+                    except Exception as img_err:
+                        # Se der erro 403 ou qualquer outro na busca, avisa e segue para o fallback de texto
+                        st.warning("O serviço de imagens está instável. Vou te explicar o conceito em detalhes:")
+
+                # FALLBACK OU RESPOSTA PADRÃO (RAG)
+                # Só executa se não houve sucesso com a imagem ou se não foi um pedido de imagem
+                if img_url is None:
+                    prompt_template = ChatPromptTemplate.from_template(
+                        "Responda em PT-BR. Se o usuário pediu uma imagem e você está apenas descrevendo, "
+                        "detalhe o que seria visto visualmente. Use o contexto: {context}\nPergunta: {input}"
+                    )
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
                     st.markdown(response["answer"])
