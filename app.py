@@ -151,7 +151,9 @@ with st.sidebar:
         "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
         "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
         "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia."
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
     }
 
     for label, prompt in sugestoes.items():
