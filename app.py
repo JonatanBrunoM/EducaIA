@@ -28,21 +28,15 @@ def get_base64_of_bin_file(bin_file):
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# 2. CSS Ajustado para fixar o botão no rodapé da Sidebar
+# 2. CSS Ajustado
 st.markdown(f"""
     <style>
-    /* Faz o container da sidebar ocupar 100% da altura e organiza em colunas */
-    [data-testid="stSidebarUserContent"] {{
-        display: flex;
-        flex-direction: column;
-        height: 90vh;
-    }}
-
-    /* Estilo para o container do botão de limpar para que ele fique no fundo */
-    .sidebar-footer-container {{
-        margin-top: auto; /* Empurra tudo para baixo */
-        padding-top: 20px;
-        padding-bottom: 10px;
+    /* Estilo para o container do botão de limpar no topo */
+    .sidebar-top-button {{
+        padding-top: 10px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+        margin-bottom: 20px;
     }}
     
     [data-testid="stSidebarCollapseByArrow"] svg {{
@@ -69,7 +63,7 @@ st.markdown(f"""
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }}
     .sidebar-logo {{
         width: 35px;
@@ -130,7 +124,7 @@ if "sugestao_clicada" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    # Topo da Sidebar
+    # Cabeçalho
     st.markdown(f"""
         <div class="sidebar-header">
             <img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo">
@@ -138,45 +132,41 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<p style='font-size: 14px; opacity: 0.7;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.subheader("Sugestões")
-    if st.button("📑 Evolução das Tecnologias"):
-        st.session_state.sugestao_clicada = "Fale sobre a evolução das tecnologias digitais na gestão em saúde."
-    if st.button("📑 Incorporação de tecnologias"):
-        st.session_state.sugestao_clicada = "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde."
-    if st.button("📑 Destaque dos principais marcos"):
-        st.session_state.sugestao_clicada = "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde."
-    if st.button("📑 Cibercultura e suas relações"):
-        st.session_state.sugestao_clicada = "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde."
-    if st.button("📑 Princípios básicos da cibercultura"):
-        st.session_state.sugestao_clicada = "Aborde os princípios básicos da cibercultura."
-    if st.button("📑 Características e fluxos de comunicação"):
-        st.session_state.sugestao_clicada = "Fale sobre características e fluxos de comunicação."
-    if st.button("📑 Aplicativos utilizados na área"):
-        st.session_state.sugestao_clicada = "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios."
-    if st.button("📑 Presença da tecnologia no cotidiano"):
-        st.session_state.sugestao_clicada = "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia."
-    
-    # Espaço dinâmico para empurrar o botão para baixo
-    st.markdown('<div class="sidebar-footer-container">', unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
+
+    # BOTÃO LIMPAR FIXO LOGO ABAIXO DO TEXTO
+    st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.subheader("Sugestões")
+    # Lista de Sugestões
+    sugestoes = {
+        "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
+        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
+        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
+        "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
+        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
+        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
+        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia."
+    }
+
+    for label, prompt in sugestoes.items():
+        if st.button(label):
+            st.session_state.sugestao_clicada = prompt
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
 
-# Processamento da Base
 if any(os.path.exists(f) for f in LIVROS):
     base = processar_base()
 else:
     st.error("Banco de dados não localizado.")
     st.stop()
 
-# Histórico e Input
 if not st.session_state.messages:
     st.markdown(f"""
         <div class="welcome-text">
