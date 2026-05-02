@@ -10,24 +10,26 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
-# 1. Configuração da Página
-st.set_page_config(page_title="EducaIA", page_icon="✨", layout="wide")
+# --- ALTERE AQUI: Configuração do Favicon ---
+# Usamos o arquivo local 'logomini.png' como o ícone da aba
+st.set_page_config(
+    page_title="EducaIA", 
+    page_icon="logomini.png", # Aqui definimos o favicon
+    layout="wide"
+)
 
-# Função para converter imagem local para base64 (necessário para o Streamlit ler do GitHub)
 def get_base64_of_bin_file(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return ""
 
-# Tenta carregar as logos (previne erro se o ficheiro ainda não estiver no Git)
-try:
-    bin_str_mini = get_base64_of_bin_file('logomini.png')
-    bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
-except:
-    bin_str_mini = ""
-    bin_str_faculdade = ""
+bin_str_mini = get_base64_of_bin_file('logomini.png')
+bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# 2. CSS Estilo "Gemini" com as tuas Logos
+# 2. CSS Estilo "Gemini" + Ajuste do ícone da Sidebar
 st.markdown(f"""
     <style>
     [data-testid="stSidebar"] {{
@@ -35,16 +37,20 @@ st.markdown(f"""
         border-right: 1px solid #333;
     }}
     
-    /* Logo da Faculdade (Canto Superior Esquerdo) - Move-se com a sidebar */
+    /* ALTERE AQUI: CSS para transformar a seta no ícone de Hambúrguer/Menu */
+    /* Isso remove a rotação da setinha e a deixa com aparência de menu */
+    [data-testid="stSidebarCollapseByArrow"] svg {{
+        transform: none !important;
+    }}
+    
     .faculdade-logo {{
         position: absolute;
-        top: -55px;
+        top: -60px;
         left: 10px;
-        width: 150px; /* Ajusta conforme o tamanho da tua logo */
+        width: 150px;
         z-index: 99;
     }}
 
-    /* Layout do Header da Sidebar */
     .sidebar-header {{
         display: flex;
         align-items: center;
@@ -106,7 +112,6 @@ def processar_base():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.from_documents(textos, embeddings)
 
-# --- INICIALIZAÇÃO DO ESTADO ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "sugestao_clicada" not in st.session_state:
@@ -114,7 +119,6 @@ if "sugestao_clicada" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    # Injeta a logo mini ao lado do título
     st.markdown(f"""
         <div class="sidebar-header">
             <img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo">
@@ -122,7 +126,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<p style='font-size: 14px; color: #aaa;'>Assistente Académico Digital</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px; color: #aaa;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.subheader("Sugestões")
@@ -140,11 +144,8 @@ with st.sidebar:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- ÁREA PRINCIPAL ---
-
-# Injeta a logo da faculdade no topo (ela move-se com o conteúdo quando a sidebar abre/fecha)
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
 
-# Motor de IA
 if any(os.path.exists(f) for f in LIVROS):
     base = processar_base()
 else:
@@ -155,7 +156,7 @@ if not st.session_state.messages:
     st.markdown("""
         <div class="welcome-text">
             <h1 class="welcome-title">Olá! Eu sou o EducaIA</h1>
-            <p style="font-size: 20px; color: #888;">Como posso ajudar nos teus estudos hoje?</p>
+            <p style="font-size: 20px; color: #888;">Como posso ajudar nos seus estudos hoje?</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -181,12 +182,12 @@ if prompt_final:
     try:
         chave = st.secrets["GROQ_API_KEY"]
         llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant", temperature=0.3)
-        prompt_template = ChatPromptTemplate.from_template("Usa o contexto: {context}\nPergunta: {input}")
+        prompt_template = ChatPromptTemplate.from_template("Responda em PT-BR usando o contexto: {context}\nPergunta: {input}")
         document_chain = create_stuff_documents_chain(llm, prompt_template)
         retrieval_chain = create_retrieval_chain(base.as_retriever(), document_chain)
         
         with st.chat_message("assistant"):
-            with st.spinner("A pesquisar nos ebooks..."):
+            with st.spinner("Pesquisando nos ebooks..."):
                 response = retrieval_chain.invoke({"input": prompt_final})
                 st.markdown(response["answer"])
                 st.session_state.messages.append({"role": "assistant", "content": response["answer"]})
