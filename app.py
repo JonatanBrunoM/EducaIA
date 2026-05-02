@@ -76,6 +76,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "sugestao_clicada" not in st.session_state:
     st.session_state.sugestao_clicada = None
+if "quiz_atual" not in st.session_state:
+    st.session_state.quiz_atual = None
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -85,11 +87,13 @@ with st.sidebar:
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
+        st.session_state.quiz_atual = None
         st.rerun()
     
-    # FUNCIONALIDADE 1: BOTÃO DE FLASHCARD
-    if st.button("🧠 Gerar Flashcard de Estudo"):
-        st.session_state.sugestao_clicada = "Gere um flashcard de estudo baseado nos documentos. Crie uma pergunta desafiadora e depois a resposta correta separada por '---'."
+    # FUNCIONALIDADE 1: BOTÃO DE QUIZ INTERATIVO
+    if st.button("🧠 Gerar Quiz Interativo"):
+        st.session_state.quiz_atual = None # Limpa quiz anterior
+        st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
@@ -140,12 +144,11 @@ if prompt_final:
         with st.spinner("Processando..."):
             try:
                 chave_groq = st.secrets["GROQ_API_KEY"]
-                # Aumentamos a temperatura levemente para flashcards serem mais criativos
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.4)
                 
                 img_urls_list = []
                 
-                # 1. Lógica de Imagem (Serper)
+                # 1. Lógica de Imagem
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
@@ -162,13 +165,12 @@ if prompt_final:
                             st.session_state.messages.append({"role": "assistant", "content": f"Galeria sobre {prompt_final}", "image_url": img_urls_list})
                     except: pass
 
-                # 2. Lógica de Texto / Flashcard (RAG)
+                # 2. Lógica de Texto / Quiz Interativo
                 if not img_urls_list:
-                    is_flashcard = "flashcard" in prompt_final.lower()
+                    is_quiz = "múltipla escolha" in prompt_final.lower() or "flashcard" in prompt_final.lower()
                     
                     prompt_template = ChatPromptTemplate.from_template(
-                        "Você é um tutor amigável. Responda em PT-BR usando o contexto: {context}\n"
-                        "Se o usuário pediu um flashcard, crie uma pergunta sobre o conteúdo e separe a resposta usando '---'.\n"
+                        "Você é um tutor acadêmico. Responda em PT-BR usando o contexto: {context}\n"
                         "Pergunta: {input}"
                     )
                     
@@ -176,18 +178,45 @@ if prompt_final:
                     response = chain.invoke({"input": prompt_final})
                     full_text = response["answer"]
                     
-                    # Interface especial para Flashcard
-                    if is_flashcard and "---" in full_text:
-                        pergunta, resposta = full_text.split("---", 1)
-                        st.markdown("### ❓ Desafio de Revisão")
-                        st.info(pergunta.strip())
-                        with st.expander("👁️ Ver Resposta"):
-                            st.success(resposta.strip())
+                    # Processamento do Quiz Interativo
+                    if is_quiz and "|" in full_text:
+                        try:
+                            # Divide a resposta da IA nos componentes do quiz
+                            partes = full_text.split("|")
+                            pergunta = partes[0].replace("PERGUNTA:", "").strip()
+                            opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
+                            correta = partes[4].replace("CORRETA:", "").strip().upper()
+                            
+                            # Salva no estado para o Streamlit não perder no clique do radio
+                            st.session_state.quiz_atual = {"p": pergunta, "o": opcoes, "c": correta}
+                        except:
+                            st.markdown(full_text) # Fallback se a IA errar o formato
                     else:
                         st.markdown(full_text)
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
-                
+
+                # Renderização da interface de resposta do Quiz (se houver um quiz ativo)
+                if st.session_state.quiz_atual:
+                    q = st.session_state.quiz_atual
+                    st.markdown(f"### 📝 Desafio: {q['p']}")
+                    
+                    # Cria os botões de opção
+                    escolha = st.radio("Selecione a alternativa correta:", q['o'], index=None, key="quiz_radio")
+                    
+                    if escolha:
+                        # Verifica se a letra inicial da escolha (A, B ou C) bate com a CORRETA
+                        letra_usuario = escolha[0].upper()
+                        if letra_usuario == q['c']:
+                            st.success(f"🎯 Excelente! A alternativa {q['c']} está correta.")
+                        else:
+                            st.error(f"❌ Não foi dessa vez. Você marcou {letra_usuario}, mas a correta é a {q['c']}.")
+                        
+                        # Limpa o quiz após responder para não ficar travado na tela
+                        if st.button("Próxima pergunta"):
+                            st.session_state.quiz_atual = None
+                            st.rerun()
+
                 if len(st.session_state.messages) <= 2: st.rerun()
             except Exception as e:
                 st.error(f"Erro: {e}")
