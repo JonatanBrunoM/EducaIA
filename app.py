@@ -39,8 +39,29 @@ st.set_page_config(
 # --- NO CSS (Início do código) ---
 st.markdown(f"""
     <style>
-    /* FORÇANDO O ÍCONE DE HAMBÚRGUER */
-    /* Este seletor tenta esconder a seta e colocar o ícone de menu do Material Design */
+    [data-testid="stSidebar"] {{
+        background-color: #1e1f20;
+        border-right: 1px solid #333;
+    }}
+    
+    /* Título da Sidebar: Ajuste para ser adaptável ao tema */
+    .sidebar-title {{
+        font-size: 22px; 
+        margin: 0; 
+        font-weight: 600;
+        /* Removida a cor fixa para respeitar o tema do Streamlit */
+    }}
+
+    /* Botão Limpar Conversa: Fixado no rodapé da Sidebar */
+    /* Criamos um container para ele */
+    .sidebar-footer {{
+        position: fixed;
+        bottom: 20px;
+        width: 244px; /* Ajuste para caber na largura da sidebar */
+        background-color: #1e1f20; /* Mesma cor da sidebar para camuflar */
+        padding-top: 10px;
+    }}
+    
     [data-testid="stSidebarCollapseByArrow"] svg {{
         display: none;
     }}
@@ -87,7 +108,7 @@ st.markdown(f"""
     
     .stButton > button:hover {{
         background-color: #333537;
-        border-color: #a8c7fa;
+        border-color: #1e86c8;
         color: #a8c7fa;
     }}
 
@@ -150,7 +171,7 @@ with st.sidebar:
     if st.button("📝 Simulado"):
         st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha para eu treinar."
 
-    st.markdown("<div style='position: fixed; bottom: 20px; width: 260px;'>", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Chat"):
         st.session_state.messages = []
         st.rerun()
