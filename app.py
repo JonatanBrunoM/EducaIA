@@ -31,12 +31,12 @@ def get_base64_of_bin_file(bin_file):
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# --- FUNÇÃO GERADORA DE PDF (CORRIGIDA) ---
+# --- FUNÇÃO GERADORA DE PDF (CORRIGIDA PARA BYTES) ---
 def gerar_pdf_resumo(texto):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, txt="EducaIA - Resumo Acadêmico", ln=True, align='C')
+    pdf.cell(0, 10, txt="EducaIA - Resumo da Conversa", ln=True, align='C')
     pdf.ln(10)
     pdf.set_font("Helvetica", size=12)
     
@@ -44,7 +44,7 @@ def gerar_pdf_resumo(texto):
     texto_limpo = texto.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 10, txt=texto_limpo)
     
-    # Retorna como bytes puros para o Streamlit não dar erro de bytearray
+    # Retorna como bytes puros para o Streamlit
     pdf_bytes = pdf.output()
     return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
@@ -114,35 +114,21 @@ with st.sidebar:
         st.session_state.ultimo_resumo = None
         st.rerun()
     
-    if st.button("📄 Gerar Resumo para Download"):
-        st.session_state.sugestao_clicada = "Gere um resumo estruturado e detalhado dos pontos principais dos documentos para exportação em PDF."
+    # LÓGICA DE RESUMO DA CONVERSA (HISTÓRICO)
+    if st.button("📄 Resumir esta Conversa"):
+        if len(st.session_state.messages) > 0:
+            conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+            st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
+        else:
+            st.warning("Inicie uma conversa para poder resumir!")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
-
     sugestoes = {
-
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-
-        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
-
-        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
-
-        "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-
-        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
-
-        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
-
-        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
-
-        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-
-        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
-
+        "📑 Cibercultura": "Aborde os princípios básicos da cibercultura.",
+        "📑 IA na Saúde": "Fale sobre a aplicabilidade da Inteligência Artificial na saúde.",
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
@@ -159,20 +145,14 @@ AVATAR_USER = "👤"
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 if not st.session_state.messages:
-    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Como posso ajudar nos teus estudos hoje?</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">O que vamos aprender hoje?</p></div>', unsafe_allow_html=True)
 
 for message in st.session_state.messages:
     avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
-        if "image_url" in message:
-            if isinstance(message["image_url"], list):
-                cols = st.columns(len(message["image_url"]))
-                for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
-            else:
-                st.image(message["image_url"])
 
-input_usuario = st.chat_input("Pergunte algo ou peça um resumo...")
+input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
@@ -187,51 +167,36 @@ if prompt_final:
                 chave_groq = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.3)
                 
-                img_urls_list = []
-                
-                if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
-                    try:
-                        serper_key = st.secrets["SERPER_API_KEY"]
-                        url_serper = "https://google.serper.dev/images"
-                        payload = {"q": prompt_final, "num": 3}
-                        headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
-                        response_serper = requests.post(url_serper, headers=headers, json=payload)
-                        search_results = response_serper.json()
-                        if search_results.get('images'):
-                            img_urls_list = [img['imageUrl'] for img in search_results['images']]
-                            st.markdown(f"Encontrei estas imagens sobre '{prompt_final}':")
-                            cols = st.columns(len(img_urls_list))
-                            for idx, url in enumerate(img_urls_list): cols[idx].image(url, use_column_width=True)
-                            st.session_state.messages.append({"role": "assistant", "content": f"Imagens sobre {prompt_final}", "image_url": img_urls_list})
-                    except: pass
-
-                if not img_urls_list:
+                # Se for pedido de resumo do histórico, usa o LLM direto sem busca nos PDFs
+                if "nossa conversa abaixo" in prompt_final:
+                    resposta_texto = llm.invoke(prompt_final).content
+                    st.session_state.ultimo_resumo = resposta_texto
+                else:
+                    # Busca normal via RAG nos arquivos PDF
                     prompt_template = ChatPromptTemplate.from_template(
                         "Você é um tutor amigável. Responda em PT-BR usando o contexto: {context}\n"
-                        "Ao final da sua explicação, se houver termos técnicos complicados, "
-                        "adicione uma seção chamada '📚 Glossário de Termos' explicando-os brevemente.\n"
+                        "Ao final, se houver termos técnicos, adicione um '📚 Glossário'.\n"
                         "Pergunta: {input}"
                     )
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
-                    full_text = response["answer"]
-                    
-                    st.markdown(full_text)
-                    st.session_state.messages.append({"role": "assistant", "content": full_text})
-                    
-                    if "resumo" in prompt_final.lower():
-                        st.session_state.ultimo_resumo = full_text
+                    resposta_texto = response["answer"]
 
-                if st.session_state.ultimo_resumo:
-                    # Gera os bytes do PDF
-                    pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
-                    st.download_button(
-                        label="📥 Baixar Resumo em PDF",
-                        data=pdf_data,
-                        file_name="resumo_educaia.pdf",
-                        mime="application/pdf"
-                    )
-
+                st.markdown(resposta_texto)
+                st.session_state.messages.append({"role": "assistant", "content": resposta_texto})
+                
                 if len(st.session_state.messages) <= 2: st.rerun()
             except Exception as e:
                 st.error(f"Erro ao processar: {e}")
+
+# Botão de download condicional (aparece se houver um resumo gerado)
+if st.session_state.ultimo_resumo:
+    st.divider()
+    pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
+    st.download_button(
+        label="📥 Baixar Resumo da Conversa em PDF",
+        data=pdf_data,
+        file_name="meu_estudo_educaia.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
