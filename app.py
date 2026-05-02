@@ -38,7 +38,7 @@ st.markdown(f"""
     /* Logo da Faculdade (Canto Superior Esquerdo) - Move-se com a sidebar */
     .faculdade-logo {{
         position: absolute;
-        top: -60px;
+        top: -55px;
         left: 10px;
         width: 150px; /* Ajusta conforme o tamanho da tua logo */
         z-index: 99;
