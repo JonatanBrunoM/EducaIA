@@ -162,7 +162,7 @@ AVATAR_USER = "👤"
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 if not st.session_state.messages:
-    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Vamos transformar seus PDFs em conhecimento?</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
 
 # Exibição do Histórico
 for message in st.session_state.messages:
