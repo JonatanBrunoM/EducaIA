@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import base64
+import requests  # Nova biblioteca para chamar a API do Google
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -9,7 +10,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
-from duckduckgo_search import DDGS 
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -139,7 +139,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
         if "image_url" in message:
-            st.image(message["image_url"], caption="Exemplo visual encontrado")
+            st.image(message["image_url"], caption="Exemplo visual encontrado no Google")
 
 input_usuario = st.chat_input("Pergunte algo ou peça uma imagem...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
@@ -153,37 +153,36 @@ if prompt_final:
     with st.chat_message("assistant", avatar=AVATAR_AI):
         with st.spinner("Processando..."):
             try:
-                chave = st.secrets["GROQ_API_KEY"]
-                llm = ChatGroq(groq_api_key=chave, model_name="llama-3.1-8b-instant", temperature=0.3)
+                chave_groq = st.secrets["GROQ_API_KEY"]
+                llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.3)
                 
-                # Inicia Variáveis de Resposta
                 img_url = None
                 
-                # TENTATIVA DE BUSCA DE IMAGEM
+                # BUSCA DE IMAGEM VIA SERPER.DEV (GOOGLE IMAGES)
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
-                        with DDGS() as ddgs:
-                            search_query = f"{prompt_final} health technology medical"
-                            results = [r for r in ddgs.images(search_query, max_results=1)]
+                        serper_key = st.secrets["SERPER_API_KEY"]
+                        url_serper = "https://google.serper.dev/images"
+                        payload = {"q": f"{prompt_final} health medical technology diagram", "num": 1}
+                        headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
                         
-                        if results:
-                            img_url = results[0]['image']
-                            resposta_texto = f"Encontrei uma imagem relacionada a '{prompt_final}':"
+                        response_serper = requests.post(url_serper, headers=headers, json=payload)
+                        search_results = response_serper.json()
+                        
+                        if search_results.get('images'):
+                            img_url = search_results['images'][0]['imageUrl']
+                            resposta_texto = f"Encontrei uma imagem técnica relacionada a '{prompt_final}':"
                             st.markdown(resposta_texto)
                             st.image(img_url)
                             st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_url})
-                        else:
-                            st.warning("Não encontrei imagens disponíveis no momento. Vou explicar o conceito:")
                     except Exception as img_err:
-                        # Se der erro 403 ou qualquer outro na busca, avisa e segue para o fallback de texto
-                        st.warning("O serviço de imagens está instável. Vou te explicar o conceito em detalhes:")
+                        st.warning("Não foi possível carregar a imagem do Google no momento. Vou explicar via texto.")
 
-                # FALLBACK OU RESPOSTA PADRÃO (RAG)
-                # Só executa se não houve sucesso com a imagem ou se não foi um pedido de imagem
+                # RESPOSTA TEXTUAL (PDF OU DESCRIÇÃO)
                 if img_url is None:
                     prompt_template = ChatPromptTemplate.from_template(
-                        "Responda em PT-BR. Se o usuário pediu uma imagem e você está apenas descrevendo, "
-                        "detalhe o que seria visto visualmente. Use o contexto: {context}\nPergunta: {input}"
+                        "Responda em PT-BR de forma clara e acadêmica. Se o usuário pediu uma imagem e houve falha na busca, "
+                        "descreva detalhadamente o que ele veria em um diagrama sobre o assunto. Use o contexto: {context}\nPergunta: {input}"
                     )
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
