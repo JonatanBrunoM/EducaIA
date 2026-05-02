@@ -108,7 +108,7 @@ with st.sidebar:
         st.session_state.ultimo_resumo = None
         st.rerun()
     
-    if st.button("🧠 Gerar Quiz Interativo"):
+    if st.button("🧠 Quiz - Em construção"):
         st.session_state.quiz_atual = None
         st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
 
