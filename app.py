@@ -10,7 +10,7 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 
-# 1. Configuração da Página (Favicon)
+# 1. Configuração da Página
 st.set_page_config(
     page_title="EducaIA", 
     page_icon="logomini.png", 
@@ -28,21 +28,23 @@ def get_base64_of_bin_file(bin_file):
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
 
-# 2. CSS Corrigido para Temas Dinâmicos
+# 2. CSS Ajustado para fixar o botão no rodapé da Sidebar
 st.markdown(f"""
     <style>
-    /* REMOVIDO: Background fixo da sidebar para permitir troca de tema */
-    
-    /* Botão Limpar Conversa: Fixado no rodapé da Sidebar */
-    .sidebar-footer {{
-        position: fixed;
-        bottom: 20px;
-        width: 260px;
-        padding-top: 10px;
-        z-index: 99;
+    /* Faz o container da sidebar ocupar 100% da altura e organiza em colunas */
+    [data-testid="stSidebarUserContent"] {{
+        display: flex;
+        flex-direction: column;
+        height: 90vh;
+    }}
+
+    /* Estilo para o container do botão de limpar para que ele fique no fundo */
+    .sidebar-footer-container {{
+        margin-top: auto; /* Empurra tudo para baixo */
+        padding-top: 20px;
+        padding-bottom: 10px;
     }}
     
-    /* Ajuste para o ícone de Hambúrguer (estilo texto) */
     [data-testid="stSidebarCollapseByArrow"] svg {{
         display: none;
     }}
@@ -55,7 +57,6 @@ st.markdown(f"""
         align-items: center;
     }}
 
-    /* Logo da faculdade (topo esquerdo) */
     .faculdade-logo {{
         position: absolute;
         top: -55px;
@@ -75,7 +76,6 @@ st.markdown(f"""
         height: auto;
     }}
 
-    /* Estilização dos botões (Mantendo cores neutras para ambos os temas) */
     .stButton > button {{
         border-radius: 20px;
         border: 1px solid #444746;
@@ -107,7 +107,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONFIGURAÇÃO DA BIBLIOTECA ---
+# --- MOTOR DE IA E DADOS ---
 LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
 
 @st.cache_resource
@@ -130,7 +130,7 @@ if "sugestao_clicada" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    # AQUI: Removi o 'color: white' para que o texto se adapte ao tema
+    # Topo da Sidebar
     st.markdown(f"""
         <div class="sidebar-header">
             <img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo">
@@ -138,7 +138,7 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<p style='font-size: 14px; opacity: 0.7;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px; opacity: 0.7;'>Assistente Académico Digital</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     
     st.subheader("Sugestões")
@@ -149,27 +149,29 @@ with st.sidebar:
     if st.button("📝 Simulado"):
         st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha para eu treinar."
 
-    # Rodapé fixo na sidebar
-    st.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
-    if st.button("🗑️ Limpar Chat"):
+    # Espaço dinâmico para empurrar o botão para baixo
+    st.markdown('<div class="sidebar-footer-container">', unsafe_allow_html=True)
+    if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
 
+# Processamento da Base
 if any(os.path.exists(f) for f in LIVROS):
     base = processar_base()
 else:
     st.error("Banco de dados não localizado.")
     st.stop()
 
+# Histórico e Input
 if not st.session_state.messages:
-    st.markdown("""
+    st.markdown(f"""
         <div class="welcome-text">
             <h1 class="welcome-title">Olá! Eu sou o EducaIA</h1>
-            <p style="font-size: 20px; opacity: 0.8;">Como posso ajudar nos seus estudos hoje?</p>
+            <p style="font-size: 20px; opacity: 0.8;">Como posso ajudar nos teus estudos hoje?</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -179,13 +181,9 @@ for message in st.session_state.messages:
 
 input_usuario = st.chat_input("Pergunta ao EducaIA...")
 
-# Lógica de processamento
-prompt_final = None
-if st.session_state.sugestao_clicada:
-    prompt_final = st.session_state.sugestao_clicada
-    st.session_state.sugestao_clicada = None
-elif input_usuario:
-    prompt_final = input_usuario
+# Lógica da Resposta
+prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
+if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
 if prompt_final:
     st.session_state.messages.append({"role": "user", "content": prompt_final})
@@ -200,7 +198,7 @@ if prompt_final:
         retrieval_chain = create_retrieval_chain(base.as_retriever(), document_chain)
         
         with st.chat_message("assistant"):
-            with st.spinner("Pesquisando nos ebooks..."):
+            with st.spinner("Pesquisando..."):
                 response = retrieval_chain.invoke({"input": prompt_final})
                 st.markdown(response["answer"])
                 st.session_state.messages.append({"role": "assistant", "content": response["answer"]})
