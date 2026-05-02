@@ -5,16 +5,14 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
-# Importações para a lógica da Chain
-from langchain.chains import create_retrieval_chain
+from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate  # <--- ESSA LINHA AQUI
+from langchain_core.prompts import ChatPromptTemplate
 
 # 1. Configuração da Página
 st.set_page_config(page_title="EducaIA | Tutor Inteligente", page_icon="🤖", layout="wide")
 
-# Estilização para esconder elementos desnecessários e melhorar o visual
+# Estilização para melhorar o visual
 st.markdown("""
     <style>
     .stDeployButton {display:none;}
@@ -24,7 +22,6 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- CONFIGURAÇÃO DA BIBLIOTECA (BANCO DE DADOS) ---
-# Adicione aqui os nomes de todos os PDFs que você subir no GitHub
 LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
 
 @st.cache_resource
@@ -35,6 +32,9 @@ def processar_base():
             loader = PyPDFLoader(arquivo)
             documentos.extend(loader.load())
     
+    if not documentos:
+        return None
+
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     textos = text_splitter.split_documents(documentos)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -48,11 +48,8 @@ with st.sidebar:
     
     st.subheader("💡 Sugestões de Pesquisa")
     st.info("Clique em um tema para iniciar a consulta automática:")
-
-    # --- LOCAL PARA VOCÊ ADICIONAR/ALTERAR AS SUGESTÕES ---
-    # Basta copiar o bloco de 'if st.button' para criar novas sugestões
     
-    if st.button("Quais são as evoluções das tencologias?"):
+    if st.button("Quais são as evoluções das tecnologias?"):
         st.session_state.sugestao_clicada = "Apresentação da evolução das tecnologias digitais de informação e comunicação na gestão em saúde."
 
     if st.button("📑 Conceitos Fundamentais"):
@@ -64,18 +61,20 @@ with st.sidebar:
     if st.button("📝 Simulado de Prova"):
         st.session_state.sugestao_clicada = "Crie 3 questões de múltipla escolha com base no conteúdo para eu treinar."
 
-    # -------------------------------------------------------
-    
     st.markdown("---")
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
         st.rerun()
 
 # --- MOTOR DE INTELIGÊNCIA ---
+# Verifica se pelo menos um arquivo existe antes de processar
 if any(os.path.exists(f) for f in LIVROS):
     base = processar_base()
+    if base is None:
+        st.error("Erro: Os arquivos existem, mas não foi possível ler o conteúdo.")
+        st.stop()
 else:
-    st.error("Erro crítico: Banco de dados não localizado.")
+    st.error("ERRO: Os arquivos PDFs (ebook1.pdf, etc) não foram encontrados no GitHub.")
     st.stop()
 
 # Inicializa o histórico de mensagens
@@ -86,21 +85,18 @@ if "messages" not in st.session_state:
 prompt_final = None
 if "sugestao_clicada" in st.session_state and st.session_state.sugestao_clicada:
     prompt_final = st.session_state.sugestao_clicada
-    st.session_state.sugestao_clicada = None # Limpa para não repetir
+    st.session_state.sugestao_clicada = None 
 
 # Interface de Chat Principal
 st.title("📚 Central de Conhecimento")
 st.caption("Consulte o banco de dados da disciplina através de IA")
 
-# Exibe as mensagens do histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Captura entrada do usuário (pelo campo de texto)
 input_usuario = st.chat_input("Digite sua dúvida aqui...")
 
-# Se o usuário digitou algo ou clicou em uma sugestão
 if input_usuario or prompt_final:
     texto_da_pergunta = input_usuario if input_usuario else prompt_final
     
@@ -135,5 +131,3 @@ if input_usuario or prompt_final:
         st.session_state.messages.append({"role": "assistant", "content": texto_resposta})
     except Exception as e:
         st.error(f"Erro na consulta: {e}")
-    else:
-    st.error("ERRO: Os PDFs não foram encontrados. Verifique se os nomes no GitHub estão como livro1.pdf, etc.")
