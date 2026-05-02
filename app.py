@@ -120,7 +120,7 @@ with st.sidebar:
             st.warning("Inicie uma conversa primeiro!")
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # SEÇÃO DE SUGESTÕES (Título Corrigido)
+    # SEÇÃO DE SUGESTÕES
     st.subheader("Sugestões")
     
     sugestoes = {
@@ -133,12 +133,26 @@ with st.sidebar:
         "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
         "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
         "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade augmented e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
     }
     
     for label, prompt in sugestoes.items():
         if st.button(label): 
             st.session_state.sugestao_clicada = prompt
+
+    # SEÇÃO DE GLOSSÁRIO (Recuperada)
+    st.markdown("---")
+    st.subheader("📖 Glossário Acadêmico")
+    termos = {
+        "Cibercultura": "Explique o conceito de Cibercultura conforme os documentos.",
+        "IA na Saúde": "O que é Inteligência Artificial aplicada à saúde?",
+        "Geração Alfa": "Quem é a Geração Alfa no contexto educacional tecnológico?",
+        "IoT (Internet das Coisas)": "O que significa IoT e como se aplica à saúde?",
+        "Big Data": "Explique o conceito de Big Data no setor de saúde."
+    }
+    for termo, prompt_termo in termos.items():
+        if st.button(f"🔍 {termo}"):
+            st.session_state.sugestao_clicada = prompt_termo
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
