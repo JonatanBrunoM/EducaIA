@@ -1,7 +1,8 @@
 import streamlit as st
 import os
 import base64
-import requests  # Nova biblioteca para chamar a API do Google
+import requests
+from fpdf import FPDF  # Necessário: pip install fpdf2
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -28,6 +29,19 @@ def get_base64_of_bin_file(bin_file):
 
 bin_str_mini = get_base64_of_bin_file('logomini.png')
 bin_str_faculdade = get_base64_of_bin_file('logofaculdade.png')
+
+# --- FUNÇÃO GERADORA DE PDF ---
+def gerar_pdf_resumo(texto):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, txt="EducaIA - Resumo Acadêmico", ln=True, align='C')
+    pdf.ln(10)
+    pdf.set_font("Arial", size=12)
+    # Limpeza básica para evitar erros de caractere no PDF
+    texto_limpo = texto.encode('latin-1', 'ignore').decode('latin-1')
+    pdf.multi_cell(0, 10, txt=texto_limpo)
+    return pdf.output(dest='S')
 
 # 2. CSS
 st.markdown(f"""
@@ -81,29 +95,32 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "sugestao_clicada" not in st.session_state:
     st.session_state.sugestao_clicada = None
+if "ultimo_resumo" not in st.session_state:
+    st.session_state.ultimo_resumo = None
 
 # --- BARRA LATERAL ---
 with st.sidebar:
     st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
     st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
+    
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
+        st.session_state.ultimo_resumo = None
         st.rerun()
+    
+    # FUNCIONALIDADE 2: BOTÃO DE RESUMO
+    if st.button("📄 Gerar Resumo para Download"):
+        st.session_state.sugestao_clicada = "Gere um resumo estruturado e detalhado dos pontos principais dos documentos para exportação em PDF."
+    
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
     sugestoes = {
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
-        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
         "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
-        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
-        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
-        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+        "📑 Aplicativos na Saúde": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+        "📑 Tecnologias emergentes": "Fale sobre a inteligência artificial, robótica e IoT na saúde."
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
@@ -127,15 +144,13 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
         if "image_url" in message:
-            # Se for uma lista de imagens (galeria), exibe em colunas
             if isinstance(message["image_url"], list):
                 cols = st.columns(len(message["image_url"]))
-                for idx, url in enumerate(message["image_url"]):
-                    cols[idx].image(url)
+                for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
             else:
                 st.image(message["image_url"])
 
-input_usuario = st.chat_input("Pergunte algo ou peça uma imagem...")
+input_usuario = st.chat_input("Pergunte algo ou peça um resumo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
@@ -152,43 +167,53 @@ if prompt_final:
                 
                 img_urls_list = []
                 
-                # BUSCA DE IMAGEM VIA SERPER.DEV (GOOGLE IMAGES) - SEQUÊNCIA DE 3 IMAGENS
+                # 1. BUSCA DE IMAGEM
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
                         url_serper = "https://google.serper.dev/images"
-                        # Pesquisa aberta com 3 resultados
                         payload = {"q": prompt_final, "num": 3}
                         headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
-                        
                         response_serper = requests.post(url_serper, headers=headers, json=payload)
                         search_results = response_serper.json()
-                        
                         if search_results.get('images'):
-                            resposta_texto = f"Encontrei estas imagens sobre '{prompt_final}':"
-                            st.markdown(resposta_texto)
-                            
-                            # Preparar lista de URLs e exibir em colunas
                             img_urls_list = [img['imageUrl'] for img in search_results['images']]
+                            st.markdown(f"Encontrei estas imagens sobre '{prompt_final}':")
                             cols = st.columns(len(img_urls_list))
-                            for idx, url in enumerate(img_urls_list):
-                                cols[idx].image(url, use_column_width=True)
-                            
-                            st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_urls_list})
-                    except Exception as img_err:
-                        st.warning("Houve uma falha na busca de imagens. Vou responder via texto:")
+                            for idx, url in enumerate(img_urls_list): cols[idx].image(url, use_column_width=True)
+                            st.session_state.messages.append({"role": "assistant", "content": f"Imagens sobre {prompt_final}", "image_url": img_urls_list})
+                    except: pass
 
-                # RESPOSTA TEXTUAL (PDF OU DESCRIÇÃO)
+                # 2. RESPOSTA TEXTUAL + GLOSSÁRIO
                 if not img_urls_list:
+                    # Prompt que solicita o GLOSSÁRIO ao final
                     prompt_template = ChatPromptTemplate.from_template(
-                        "Responda em PT-BR de forma clara e acadêmica. Se o usuário pediu uma imagem e houve falha na busca, "
-                        "descreva detalhadamente o que ele veria visualmente. Use o contexto: {context}\nPergunta: {input}"
+                        "Você é um tutor amigável. Responda em PT-BR usando o contexto: {context}\n"
+                        "Ao final da sua explicação, se houver termos técnicos complicados, "
+                        "adicione uma seção chamada '📚 Glossário de Termos' explicando-os brevemente.\n"
+                        "Pergunta: {input}"
                     )
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
-                    st.markdown(response["answer"])
-                    st.session_state.messages.append({"role": "assistant", "content": response["answer"]})
-                
+                    full_text = response["answer"]
+                    
+                    st.markdown(full_text)
+                    st.session_state.messages.append({"role": "assistant", "content": full_text})
+                    
+                    # Se foi pedido resumo, guarda para o botão de PDF
+                    if "resumo" in prompt_final.lower():
+                        st.session_state.ultimo_resumo = full_text
+
+                # Exibe botão de download se houver resumo
+                if st.session_state.ultimo_resumo:
+                    pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
+                    st.download_button(
+                        label="📥 Baixar Resumo em PDF",
+                        data=pdf_data,
+                        file_name="resumo_educaia.pdf",
+                        mime="application/pdf"
+                    )
+
                 if len(st.session_state.messages) <= 2: st.rerun()
             except Exception as e:
                 st.error(f"Erro ao processar: {e}")
