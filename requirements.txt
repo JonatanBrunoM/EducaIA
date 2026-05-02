@@ -9,3 +9,4 @@ faiss-cpu==1.8.0
 sentence-transformers==2.6.1
 torchvision==0.17.2
 requests==2.31.0
+fpdf2==2.7.8
