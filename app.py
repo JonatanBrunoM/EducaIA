@@ -115,7 +115,7 @@ with st.sidebar:
         st.rerun()
     
     # LÓGICA DE RESUMO DA CONVERSA (HISTÓRICO)
-    if st.button("📄 Resumir esta Conversa"):
+    if st.button("📄 Baixar conversa"):
         if len(st.session_state.messages) > 0:
             conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
             st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
@@ -125,10 +125,29 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
+
     sugestoes = {
+
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-        "📑 Cibercultura": "Aborde os princípios básicos da cibercultura.",
-        "📑 IA na Saúde": "Fale sobre a aplicabilidade da Inteligência Artificial na saúde.",
+
+        "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
+
+        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
+
+        "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
+
+        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
+
+        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
+
+        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+
+        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
+
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
