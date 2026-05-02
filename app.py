@@ -93,29 +93,17 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.subheader("Sugestões")
-
     sugestoes = {
-
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
-
         "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
-
         "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
-
         "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-
         "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
-
         "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
-
         "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-
         "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
-
         "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-
         "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade aumentada e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
-
     }
     for label, prompt in sugestoes.items():
         if st.button(label): st.session_state.sugestao_clicada = prompt
@@ -139,7 +127,13 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
         if "image_url" in message:
-            st.image(message["image_url"], caption="Exemplo visual encontrado no Google")
+            # Se for uma lista de imagens (galeria), exibe em colunas
+            if isinstance(message["image_url"], list):
+                cols = st.columns(len(message["image_url"]))
+                for idx, url in enumerate(message["image_url"]):
+                    cols[idx].image(url)
+            else:
+                st.image(message["image_url"])
 
 input_usuario = st.chat_input("Pergunte algo ou peça uma imagem...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
@@ -156,33 +150,39 @@ if prompt_final:
                 chave_groq = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.3)
                 
-                img_url = None
+                img_urls_list = []
                 
-                # BUSCA DE IMAGEM VIA SERPER.DEV (GOOGLE IMAGES)
+                # BUSCA DE IMAGEM VIA SERPER.DEV (GOOGLE IMAGES) - SEQUÊNCIA DE 3 IMAGENS
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
                         url_serper = "https://google.serper.dev/images"
-                        payload = {"q": f"{prompt_final} health medical technology diagram", "num": 1}
+                        # Pesquisa aberta com 3 resultados
+                        payload = {"q": prompt_final, "num": 3}
                         headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
                         
                         response_serper = requests.post(url_serper, headers=headers, json=payload)
                         search_results = response_serper.json()
                         
                         if search_results.get('images'):
-                            img_url = search_results['images'][0]['imageUrl']
-                            resposta_texto = f"Encontrei uma imagem técnica relacionada a '{prompt_final}':"
+                            resposta_texto = f"Encontrei estas imagens sobre '{prompt_final}':"
                             st.markdown(resposta_texto)
-                            st.image(img_url)
-                            st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_url})
+                            
+                            # Preparar lista de URLs e exibir em colunas
+                            img_urls_list = [img['imageUrl'] for img in search_results['images']]
+                            cols = st.columns(len(img_urls_list))
+                            for idx, url in enumerate(img_urls_list):
+                                cols[idx].image(url, use_column_width=True)
+                            
+                            st.session_state.messages.append({"role": "assistant", "content": resposta_texto, "image_url": img_urls_list})
                     except Exception as img_err:
-                        st.warning("Não foi possível carregar a imagem do Google no momento. Vou explicar via texto.")
+                        st.warning("Houve uma falha na busca de imagens. Vou responder via texto:")
 
                 # RESPOSTA TEXTUAL (PDF OU DESCRIÇÃO)
-                if img_url is None:
+                if not img_urls_list:
                     prompt_template = ChatPromptTemplate.from_template(
                         "Responda em PT-BR de forma clara e acadêmica. Se o usuário pediu uma imagem e houve falha na busca, "
-                        "descreva detalhadamente o que ele veria em um diagrama sobre o assunto. Use o contexto: {context}\nPergunta: {input}"
+                        "descreva detalhadamente o que ele veria visualmente. Use o contexto: {context}\nPergunta: {input}"
                     )
                     chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                     response = chain.invoke({"input": prompt_final})
