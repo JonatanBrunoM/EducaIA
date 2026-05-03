@@ -74,9 +74,10 @@ if not st.session_state.get('connected'):
     )
     
     # GERAMOS O LINK E O VERIFIER
-    authorization_url, _ = flow.authorization_url(
-        prompt='consent',
-        code_challenge_method='S256' # Força o padrão que o Google prefere
+authorization_url, _ = flow.authorization_url(
+    prompt='consent',
+    code_challenge_method='S256' # Força o padrão que o Google prefere
+)
     
     # GUARDAMOS O VERIFIER NA SESSÃO PARA USAR QUANDO VOLTAR
     st.session_state['code_verifier'] = flow.code_verifier
