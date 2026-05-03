@@ -61,29 +61,6 @@ st.markdown(f"""
     .stButton > button {{
         border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px;
     }}
-    
-    /* Ajuste para fixar botões de ação no rodapé */
-    [data-testid="stBottomBlockContainer"] {{
-        background-color: white;
-        padding-bottom: 20px;
-    }}
-
-    .chat-action-container {{
-        display: flex;
-        gap: 10px;
-        margin-bottom: 10px;
-    }}
-
-    .chat-action-btn button {{
-        border-radius: 15px !important;
-        height: 32px !important;
-        padding: 0px 15px !important;
-        width: auto !important;
-        font-size: 12px !important;
-        background-color: #f0f2f6 !important;
-        border: 1px solid rgba(128, 128, 128, 0.3) !important;
-    }}
-    
     .stDeployButton {{display:none;}}
     footer {{visibility: hidden;}}
     .welcome-text {{ text-align: center; margin-top: 15vh; }}
@@ -125,23 +102,45 @@ with st.sidebar:
     st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
     
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
+    if st.button("🗑️ Limpar Conversa"):
+        st.session_state.messages = []
+        st.session_state.quiz_atual = None
+        st.session_state.ultimo_resumo = None
+        st.rerun()
+    
     if st.button("🧠 Quiz - Em construção"):
         st.session_state.quiz_atual = None
         st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
+
+    if st.button("📄 Gerar Resumo da Conversa"):
+        if len(st.session_state.messages) > 0:
+            conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
+            st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
+        else:
+            st.warning("Inicie uma conversa primeiro!")
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # SEÇÃO DE SUGESTÕES
     st.subheader("Sugestões")
+    
     sugestoes = {
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
         "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
+        "📑 Destaque dos principais marcos": "Fale sobre os os principais marcos e avanços da evolução histórica das tecnologias da informação na saúde.",
         "📑 Cibercultura e suas relações": "Fale sobre a discussão sobre a cibercultura e suas relações com a educação e a saúde.",
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos.",
-        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde."
+        "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
+        "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
+        "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+        "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
+        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade augmented e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
     }
+    
     for label, prompt in sugestoes.items():
         if st.button(label): 
             st.session_state.sugestao_clicada = prompt
 
+    # SEÇÃO DE GLOSSÁRIO
     st.markdown("---")
     st.subheader("📖 Glossário Acadêmico")
     termos = {
@@ -155,6 +154,7 @@ with st.sidebar:
         if st.button(f"🔍 {termo}"):
             st.session_state.sugestao_clicada = prompt_termo
 
+    # --- ÁREA DISCRETA DE CONFERÊNCIA ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.expander("⚙️"):
         st.caption("Materiais na base:")
@@ -184,34 +184,7 @@ for message in st.session_state.messages:
             else:
                 st.image(message["image_url"])
 
-# --- ÁREA DE RODAPÉ FIXA (INPUT + BOTÕES) ---
-# Usar o container de rodapé do Streamlit para fixar os elementos
-with st.container():
-    # Criação dos botões de ação logo acima do input, fixados pelo CSS
-    col_bt1, col_bt2, _ = st.columns([0.2, 0.15, 0.65])
-    
-    with col_bt1:
-        st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
-        if st.button("📄 Resumir Chat"):
-            if len(st.session_state.messages) > 0:
-                conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
-                st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
-            else:
-                st.toast("Inicie uma conversa primeiro!")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with col_bt2:
-        st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
-        if st.button("🗑️ Limpar"):
-            st.session_state.messages = []
-            st.session_state.quiz_atual = None
-            st.session_state.ultimo_resumo = None
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    input_usuario = st.chat_input("Pergunte algo...")
-
-# Lógica de processamento (Igual ao código original)
+input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
@@ -227,6 +200,7 @@ if prompt_final:
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.4)
                 
                 img_urls_list = []
+                # 1. Busca de Imagem
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
@@ -243,6 +217,7 @@ if prompt_final:
                             st.session_state.messages.append({"role": "assistant", "content": f"Galeria sobre {prompt_final}", "image_url": img_urls_list})
                     except: pass
 
+                # 2. Lógica de Texto / Quiz / Resumo
                 if not img_urls_list:
                     if "nossa conversa abaixo" in prompt_final:
                         full_text = llm.invoke(prompt_final).content
@@ -256,6 +231,7 @@ if prompt_final:
                         response = chain.invoke({"input": prompt_final})
                         full_text = response["answer"]
                     
+                    # Processamento de Quiz Interativo
                     if "PERGUNTA:" in full_text and "|" in full_text:
                         try:
                             partes = full_text.split("|")
@@ -267,8 +243,10 @@ if prompt_final:
                             st.markdown(full_text)
                     else:
                         st.markdown(full_text)
+                    
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
 
+                # Renderização do Quiz
                 if st.session_state.quiz_atual:
                     q = st.session_state.quiz_atual
                     st.markdown(f"### 📝 Desafio: {q['p']}")
@@ -286,11 +264,12 @@ if prompt_final:
             except Exception as e:
                 st.error(f"Erro: {e}")
 
-# Download do PDF caso o resumo tenha sido gerado
+# Botão de Download PDF (Resumo)
 if st.session_state.ultimo_resumo:
+    st.divider()
     pdf_data = gerar_pdf_resumo(st.session_state.ultimo_resumo)
     st.download_button(
-        label="📥 Baixar PDF do Resumo",
+        label="📥 Baixar Resumo em PDF",
         data=pdf_data,
         file_name="resumo_educaia.pdf",
         mime="application/pdf",
