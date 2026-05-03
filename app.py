@@ -23,7 +23,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Completa: Login + Retorno) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Sem auth.login()) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -34,15 +34,7 @@ client_config = {
     }
 }
 
-auth = Authenticate(
-    secret_credentials_path=None, 
-    cookie_name='educaia_auth_cookie',
-    cookie_key='chave_secreta_educa',
-    cookie_expiry_days=1,
-    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
-)
-
-# 1. Captura o código de retorno da URL (Query Params)
+# Captura o código de retorno da URL
 query_params = st.query_params
 if "code" in query_params and not st.session_state.get('connected'):
     try:
@@ -52,29 +44,23 @@ if "code" in query_params and not st.session_state.get('connected'):
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
-        # Transforma o código da URL em um Token de acesso
         flow.fetch_token(code=query_params["code"])
         credentials = flow.credentials
-        
-        # Faz a chamada para pegar os dados do usuário
         user_info_service = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {credentials.token}"}
         ).json()
         
-        # Salva na sessão do Streamlit
         st.session_state.connected = True
         st.session_state.name = user_info_service.get("name")
         st.session_state.email = user_info_service.get("email")
         st.session_state.picture = user_info_service.get("picture")
-        
-        # Limpa a URL para não processar o mesmo código duas vezes
         st.query_params.clear()
         st.rerun()
     except Exception as e:
         st.error(f"Erro ao processar login: {e}")
 
-# 2. Se não estiver logado, mostra o botão de login
+# Se não estiver logado, mostra o botão customizado
 if not st.session_state.get('connected'):
     from google_auth_oauthlib.flow import Flow
     flow = Flow.from_client_config(
@@ -91,10 +77,11 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
+    # IMPORTANTE: Use st.link_button e NUNCA chame auth.login()
     st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
-    st.stop()
+    st.stop() 
 
-# --- MAPEAMENTO DOS DADOS DO USUÁRIO (Compatibilidade com o restante do código) ---
+# Mapeia os dados do usuário para o restante do app
 user_info = {
     "name": st.session_state.get('name'),
     "email": st.session_state.get('email'),
