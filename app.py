@@ -40,7 +40,7 @@ if "code" in query_params and not st.session_state.get('connected'):
         flow = Flow.from_client_config(
             client_config,
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
-            redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
+            redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"].strip()
         )
         
         # BUSCAMOS O VERIFIER QUE GUARDAMOS ANTES DE SAIR DO APP
