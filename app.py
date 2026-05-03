@@ -13,13 +13,35 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
+from st_google_auth import GoogleAuth # Importação da nova biblioteca
 
-# 1. Configuração da Página
+# 1. Configuração da Página (Sempre o primeiro comando Streamlit)
 st.set_page_config(
     page_title="EducaIA", 
     page_icon="logomini.png", 
     layout="wide"
 )
+
+# --- CONFIGURAÇÃO LOGIN GOOGLE ---
+google_auth = GoogleAuth(
+    client_id=st.secrets["GOOGLE_CLIENT_ID"],
+    client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
+    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"],
+)
+
+user_info = google_auth.login()
+
+# Verifica se o usuário está logado
+if not user_info:
+    st.markdown("""
+        <div style='text-align: center; margin-top: 20vh;'>
+            <h1>Bem-vindo ao EducaIA</h1>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    st.stop() # Interrompe o script aqui se não houver login
+
+# --- SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO ---
 
 def get_base64_of_bin_file(bin_file):
     try:
@@ -73,7 +95,7 @@ st.markdown(f"""
     }}
     .stDeployButton {{display:none;}}
     footer {{visibility: hidden;}}
-    .welcome-text {{ text-align: center; margin-top: 15vh; }}
+    .welcome-text {{ text-align: center; margin-top: 10vh; }}
     .welcome-title {{
         font-size: 50px; font-weight: 600; background: linear-gradient(90deg, #1e86c8, #8ac5e2);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -110,6 +132,22 @@ if "proximas_perguntas" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
+    # Perfil do Usuário Logado
+    st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+            <img src="{user_info['picture']}" style="width: 40px; border-radius: 50%;">
+            <div>
+                <p style="margin: 0; font-weight: bold; font-size: 14px;">{user_info['name']}</p>
+                <p style="margin: 0; font-size: 12px; opacity: 0.7;">{user_info['email']}</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🚪 Logout"):
+        google_auth.logout()
+        st.rerun()
+
+    st.markdown("---")
     st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
     st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
     
@@ -183,11 +221,12 @@ with st.sidebar:
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
 base = processar_base()
 
-AVATAR_USER = "👤"
+AVATAR_USER = user_info['picture'] # Usa a foto do Google como avatar
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 if not st.session_state.messages:
-    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá! Eu sou o EducaIA</h1><p style="font-size: 20px; opacity: 0.8;">Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
+    # Saudação personalizada com o nome do Google
+    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá, {user_info["given_name"]}!</h1><p style="font-size: 20px; opacity: 0.8;">Eu sou o EducaIA. Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
 
 # Exibição do Histórico
 for message in st.session_state.messages:
@@ -259,7 +298,6 @@ if prompt_final:
                         st.session_state.ultimo_resumo = full_text
                         st.session_state.proximas_perguntas = []
                     else:
-                        # CORREÇÃO AQUI: Template definido sem f-string externa para evitar erro de variáveis
                         template_texto = (
                             "Você é um tutor acadêmico em PT-BR. " + tom_selecionado + "\n"
                             "Responda usando o contexto: {context}\n"
@@ -269,8 +307,6 @@ if prompt_final:
                         )
                         
                         prompt_template = ChatPromptTemplate.from_template(template_texto)
-                        
-                        # Criação da chain com os parâmetros corretos
                         combine_docs_chain = create_stuff_documents_chain(llm, prompt_template)
                         chain = create_retrieval_chain(base.as_retriever(), combine_docs_chain)
                         
