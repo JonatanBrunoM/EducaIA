@@ -23,29 +23,46 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Final de Argumentos) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Definitiva sem Arquivo JSON) ---
+# 1. Montamos o dicionário que a biblioteca esperaria encontrar em um arquivo
+client_config = {
+    "web": {
+        "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+        "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": [st.secrets["GOOGLE_REDIRECT_URI"]],
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+    }
+}
+
+# 2. Inicializamos o Authenticate
 auth = Authenticate(
     secret_credentials_path=None, 
     cookie_name='educaia_auth_cookie',
     cookie_key='chave_secreta_educa',
     cookie_expiry_days=1,
-    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"] # Passando como argumento obrigatório
+    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
 )
 
-# Agora injetamos os IDs que a biblioteca não encontrou no arquivo (que está None)
-auth.client_id = st.secrets["GOOGLE_CLIENT_ID"]
-auth.client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
-auth.authorization_base_url = "https://accounts.google.com/o/oauth2/auth"
-auth.token_url = "https://oauth2.googleapis.com/token"
-
-# --- VERIFICAÇÃO DE LOGIN ---
+# 3. A mágica: Criamos o fluxo manualmente a partir do dicionário acima
+from google_auth_oauthlib.flow import Flow
 if not st.session_state.get('connected'):
+    # Configuramos o Flow do Google usando o dicionário, não o arquivo
+    auth.flow = Flow.from_client_config(
+        client_config,
+        scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
+        redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
+    )
+
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1>Bem-vindo ao EducaIA</h1>
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
+    
+    # Chamamos o login. Agora o auth.flow já existe e ele não vai tentar abrir arquivo!
     auth.login() 
     st.stop()
 
