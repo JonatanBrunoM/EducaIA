@@ -74,10 +74,10 @@ if not st.session_state.get('connected'):
     )
     
     # GERAMOS O LINK E O VERIFIER
-authorization_url, _ = flow.authorization_url(
-    prompt='consent',
-    code_challenge_method='S256' # Força o padrão que o Google prefere
-)
+    authorization_url, _ = flow.authorization_url(
+        prompt='consent',
+        code_challenge_method='S256' # Força o padrão que o Google prefere
+    )
     
     # GUARDAMOS O VERIFIER NA SESSÃO PARA USAR QUANDO VOLTAR
     st.session_state['code_verifier'] = flow.code_verifier
@@ -90,7 +90,6 @@ authorization_url, _ = flow.authorization_url(
     """, unsafe_allow_html=True)
     
     # BOTÃO PARA ABRIR NA MESMA ABA (Usando HTML em vez de link_button)
-    # O target="_self" força a abertura na mesma guia
     st.markdown(f"""
         <a href="{authorization_url}" target="_self" style="text-decoration: none;">
             <div style="background-color: #1e86c8; color: white; padding: 12px; border-radius: 20px; text-align: center; font-weight: bold; width: 100%;">
@@ -99,7 +98,7 @@ authorization_url, _ = flow.authorization_url(
         </a>
     """, unsafe_allow_html=True)
     st.stop()
-
+    
 # 3. Mapeamento para o resto do App
 user_info = {
     "name": st.session_state.get('name'),
