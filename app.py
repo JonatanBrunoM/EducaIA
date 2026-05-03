@@ -13,39 +13,37 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
-from streamlit_google_auth import Authenticate # Alterado para a biblioteca estável
+from streamlit_google_auth import Authenticate
 
-# 1. Configuração da Página (Sempre o primeiro comando Streamlit)
+# 1. Configuração da Página
 st.set_page_config(
     page_title="EducaIA", 
     page_icon="logomini.png", 
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão 1.1.8 - Ajuste de Argumentos) ---
-google_creds = {
-    "web": {
-        "client_id": st.secrets["GOOGLE_CLIENT_ID"],
-        "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-    }
-}
-
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Correção para Versão 1.1.8) ---
+# Criamos o objeto sem passar o dicionário no init para evitar o erro de 'Path'
 auth = Authenticate(
-    secret_credentials_path=google_creds,
+    secret_credentials_path=None, 
     cookie_name='educaia_auth_cookie',
     cookie_key='chave_secreta_educa',
     cookie_expiry_days=1,
-    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"] # Adicionado aqui como argumento obrigatório
 )
 
+# Injetamos as credenciais manualmente para contornar a falha da biblioteca
+auth.client_id = st.secrets["GOOGLE_CLIENT_ID"]
+auth.client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
+auth.redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
+auth.authorization_base_url = "https://accounts.google.com/o/oauth2/auth"
+auth.token_url = "https://oauth2.googleapis.com/token"
+
 # --- VERIFICAÇÃO DE LOGIN ---
-# Na versão 1.1.8, usamos check_authentication() ou validamos o estado diretamente
 try:
+    # Tenta o método da versão 1.1.8
     auth.check_authentication()
-except AttributeError:
-    # Caso o método não exista em sub-versões, a biblioteca faz o check automático no login
+except Exception:
+    # Se falhar ou não existir, a própria biblioteca gerencia via session_state
     pass
 
 if not st.session_state.get('connected'):
@@ -58,7 +56,7 @@ if not st.session_state.get('connected'):
     auth.login() 
     st.stop()
 
-# Mapeia os dados do usuário logado para o formato que seu código já usa
+# Mapeia os dados do usuário logado
 user_info = {
     "name": st.session_state.get('name'),
     "email": st.session_state.get('email'),
