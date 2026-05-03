@@ -23,7 +23,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Redirecionamento Direto) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Completa: Login + Retorno) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -42,17 +42,46 @@ auth = Authenticate(
     redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
 )
 
+# 1. Captura o código de retorno da URL (Query Params)
+query_params = st.query_params
+if "code" in query_params and not st.session_state.get('connected'):
+    try:
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
+            redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
+        )
+        # Transforma o código da URL em um Token de acesso
+        flow.fetch_token(code=query_params["code"])
+        credentials = flow.credentials
+        
+        # Faz a chamada para pegar os dados do usuário
+        user_info_service = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {credentials.token}"}
+        ).json()
+        
+        # Salva na sessão do Streamlit
+        st.session_state.connected = True
+        st.session_state.name = user_info_service.get("name")
+        st.session_state.email = user_info_service.get("email")
+        st.session_state.picture = user_info_service.get("picture")
+        
+        # Limpa a URL para não processar o mesmo código duas vezes
+        st.query_params.clear()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao processar login: {e}")
+
+# 2. Se não estiver logado, mostra o botão de login
 if not st.session_state.get('connected'):
     from google_auth_oauthlib.flow import Flow
-    
-    # Criamos o Flow manualmente
     flow = Flow.from_client_config(
         client_config,
         scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
-    
-    # Geramos a URL de autorização
     authorization_url, _ = flow.authorization_url(prompt='consent')
 
     st.markdown("""
@@ -62,12 +91,10 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
-    # Criamos o botão manualmente que redireciona para o Google
-    # Isso substitui o auth.login() que estava quebrando
-    st.link_button("Fazer Login com Google", authorization_url, use_container_width=True)
+    st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
     st.stop()
 
-# Mapeia os dados do usuário
+# --- MAPEAMENTO DOS DADOS DO USUÁRIO (Compatibilidade com o restante do código) ---
 user_info = {
     "name": st.session_state.get('name'),
     "email": st.session_state.get('email'),
