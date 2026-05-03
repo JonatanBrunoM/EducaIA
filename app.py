@@ -23,8 +23,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Definitiva sem Arquivo JSON) ---
-# 1. Montamos o dicionário que a biblioteca esperaria encontrar em um arquivo
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Redirecionamento Direto) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -32,11 +31,9 @@ client_config = {
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "redirect_uris": [st.secrets["GOOGLE_REDIRECT_URI"]],
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
     }
 }
 
-# 2. Inicializamos o Authenticate
 auth = Authenticate(
     secret_credentials_path=None, 
     cookie_name='educaia_auth_cookie',
@@ -45,15 +42,18 @@ auth = Authenticate(
     redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
 )
 
-# 3. A mágica: Criamos o fluxo manualmente a partir do dicionário acima
-from google_auth_oauthlib.flow import Flow
 if not st.session_state.get('connected'):
-    # Configuramos o Flow do Google usando o dicionário, não o arquivo
-    auth.flow = Flow.from_client_config(
+    from google_auth_oauthlib.flow import Flow
+    
+    # Criamos o Flow manualmente
+    flow = Flow.from_client_config(
         client_config,
         scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
+    
+    # Geramos a URL de autorização
+    authorization_url, _ = flow.authorization_url(prompt='consent')
 
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
@@ -62,8 +62,9 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
-    # Chamamos o login. Agora o auth.flow já existe e ele não vai tentar abrir arquivo!
-    auth.login() 
+    # Criamos o botão manualmente que redireciona para o Google
+    # Isso substitui o auth.login() que estava quebrando
+    st.link_button("Fazer Login com Google", authorization_url, use_container_width=True)
     st.stop()
 
 # Mapeia os dados do usuário
