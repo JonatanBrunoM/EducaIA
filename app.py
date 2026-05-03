@@ -11,6 +11,7 @@ from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
 
 # 1. Configuração da Página
@@ -61,6 +62,16 @@ st.markdown(f"""
     .stButton > button {{
         border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px;
     }}
+    /* Botões de sugestão específicos */
+    .suggestion-btn button {{
+        background-color: transparent !important;
+        border: 1px solid #1e86c8 !important;
+        color: #1e86c8 !important;
+        font-style: italic !important;
+        font-size: 13px !important;
+        height: auto !important;
+        text-align: center !important;
+    }}
     .stDeployButton {{display:none;}}
     footer {{visibility: hidden;}}
     .welcome-text {{ text-align: center; margin-top: 15vh; }}
@@ -95,6 +106,8 @@ if "quiz_atual" not in st.session_state:
     st.session_state.quiz_atual = None
 if "ultimo_resumo" not in st.session_state:
     st.session_state.ultimo_resumo = None
+if "proximas_perguntas" not in st.session_state:
+    st.session_state.proximas_perguntas = []
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -106,6 +119,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.session_state.quiz_atual = None
         st.session_state.ultimo_resumo = None
+        st.session_state.proximas_perguntas = []
         st.rerun()
     
     if st.button("🧠 Quiz - Em construção"):
@@ -120,9 +134,7 @@ with st.sidebar:
             st.warning("Inicie uma conversa primeiro!")
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # SEÇÃO DE SUGESTÕES
     st.subheader("Sugestões")
-    
     sugestoes = {
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
         "📑 Incorporação de tecnologias": "Fale sobre a exploração da evolução histórica da incorporação de tecnologias da informação na saúde.",
@@ -131,16 +143,15 @@ with st.sidebar:
         "📑 Princípios básicos da cibercultura": "Aborde os princípios básicos da cibercultura.",
         "📑 Características e fluxos de comunicação": "Fale sobre características e fluxos de comunicação.",
         "📑 Aplicativos utilizados na área": "Fale sobre os aplicativos utilizados na área da saúde com exemplos e benefícios.",
-        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos em relação à tecnologia.",
+        "📑 Presença da tecnologia no cotidiano": "Análise da presença da tecnologia no cotidiano, com ênfase na geração alfa e no perfil dos novos alunos.",
         "📑 Tecnologias emergentes na Saúde": "Fale sobre a introdução às tecnologias emergentes na saúde.",
-        "📑 Aplicabilidade das tecnologias emergentes": "Aplicabilidade das tecnologias emergentes na área da saúde, destacando os seguintes temas: Inteligência artificial (IA) - Realidade augmented e virtual - Robótica - Internet das coisas (IoT) - Metaversos - Impressora 3D - Big Data - Machine Learning."
+        "📑 Aplicabilidade das tecnologias": "Aplicabilidade das tecnologias emergentes na área da saúde (IA, IoT, Big Data, etc)."
     }
     
     for label, prompt in sugestoes.items():
         if st.button(label): 
             st.session_state.sugestao_clicada = prompt
 
-    # SEÇÃO DE GLOSSÁRIO
     st.markdown("---")
     st.subheader("📖 Glossário Acadêmico")
     termos = {
@@ -154,7 +165,6 @@ with st.sidebar:
         if st.button(f"🔍 {termo}"):
             st.session_state.sugestao_clicada = prompt_termo
 
-    # --- ÁREA DISCRETA DE CONFERÊNCIA ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.expander("⚙️"):
         st.caption("Materiais na base:")
@@ -183,6 +193,19 @@ for message in st.session_state.messages:
                 for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
             else:
                 st.image(message["image_url"])
+
+# Exibição de Sugestões Dinâmicas (após a última resposta da IA)
+if st.session_state.proximas_perguntas and st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+    st.write("---")
+    st.caption("Sugestões de continuação:")
+    cols_sug = st.columns(len(st.session_state.proximas_perguntas))
+    for i, sug in enumerate(st.session_state.proximas_perguntas):
+        with cols_sug[i]:
+            st.markdown('<div class="suggestion-btn">', unsafe_allow_html=True)
+            if st.button(sug, key=f"btn_sug_{i}"):
+                st.session_state.sugestao_clicada = sug
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
 input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
@@ -222,15 +245,29 @@ if prompt_final:
                     if "nossa conversa abaixo" in prompt_final:
                         full_text = llm.invoke(prompt_final).content
                         st.session_state.ultimo_resumo = full_text
+                        st.session_state.proximas_perguntas = []
                     else:
+                        # PROMPT AJUSTADO PARA GERAR SUGESTÕES AO FINAL
                         prompt_template = ChatPromptTemplate.from_template(
-                            "Você é um tutor acadêmico. Responda em PT-BR usando o contexto: {context}\n"
-                            "Pergunta: {input}"
+                            "Você é um tutor acadêmico em PT-BR. Responda usando o contexto: {context}\n"
+                            "Pergunta: {input}\n\n"
+                            "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÕES:' "
+                            "e liste 3 perguntas curtas para o aluno continuar estudando este tema, separadas por ponto e vírgula."
                         )
                         chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                         response = chain.invoke({"input": prompt_final})
-                        full_text = response["answer"]
-                    
+                        raw_answer = response["answer"]
+                        
+                        # Extrair sugestões do texto
+                        if "SUGESTÕES:" in raw_answer:
+                            partes = raw_answer.split("SUGESTÕES:")
+                            full_text = partes[0].strip()
+                            sug_raw = partes[1].split(";")
+                            st.session_state.proximas_perguntas = [s.strip() for s in sug_raw if s.strip()][:3]
+                        else:
+                            full_text = raw_answer
+                            st.session_state.proximas_perguntas = []
+
                     # Processamento de Quiz Interativo
                     if "PERGUNTA:" in full_text and "|" in full_text:
                         try:
@@ -260,7 +297,7 @@ if prompt_final:
                             st.session_state.quiz_atual = None
                             st.rerun()
 
-                if len(st.session_state.messages) <= 2: st.rerun()
+                st.rerun() # Atualiza para mostrar os botões de sugestão
             except Exception as e:
                 st.error(f"Erro: {e}")
 
