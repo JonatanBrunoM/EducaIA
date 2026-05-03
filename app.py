@@ -23,21 +23,22 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Técnico para Streamlit Cloud) ---
-# Criamos o objeto passando 'None' no caminho do arquivo para evitar o erro de 'Path'
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Final de Argumentos) ---
 auth = Authenticate(
     secret_credentials_path=None, 
     cookie_name='educaia_auth_cookie',
     cookie_key='chave_secreta_educa',
     cookie_expiry_days=1,
+    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"] # Passando como argumento obrigatório
 )
 
-# Injetamos os dados manualmente (Isso evita o erro de TypeError: not dict)
+# Agora injetamos os IDs que a biblioteca não encontrou no arquivo (que está None)
 auth.client_id = st.secrets["GOOGLE_CLIENT_ID"]
 auth.client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
-auth.redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
+auth.authorization_base_url = "https://accounts.google.com/o/oauth2/auth"
+auth.token_url = "https://oauth2.googleapis.com/token"
 
-# Verificamos a conexão
+# --- VERIFICAÇÃO DE LOGIN ---
 if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
@@ -45,8 +46,6 @@ if not st.session_state.get('connected'):
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    # Chama o login passando os argumentos necessários
     auth.login() 
     st.stop()
 
