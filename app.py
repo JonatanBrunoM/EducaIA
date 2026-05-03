@@ -23,17 +23,14 @@ st.set_page_config(
 )
 
 # --- CONFIGURAÇÃO LOGIN GOOGLE (Versão 1.1.8) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão 1.1.8 corrigida) ---
 auth = Authenticate(
-    secret_credentials_path=None,
+    client_id=st.secrets["GOOGLE_CLIENT_ID"],
+    client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
+    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"],
     cookie_name='educaia_auth_cookie',
     cookie_key='chave_secreta_educa',
-    cookie_expiry_days=1,
-    # Os dados agora entram aqui como um dicionário:
-    credentials={
-        "client_id": st.secrets["GOOGLE_CLIENT_ID"],
-        "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
-        "redirect_uri": st.secrets["GOOGLE_REDIRECT_URI"],
-    }
+    cookie_expiry_days=1
 )
 
 # Verifica se há sessão ativa
