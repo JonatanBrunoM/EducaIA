@@ -266,9 +266,9 @@ if prompt_final:
                     else:
                         # PROMPT AJUSTADO PARA MODO DE ESTUDO + SUGESTÃO ÚNICA
                         prompt_template = ChatPromptTemplate.from_template(
-                            f"Você é um tutor acadêmico em PT-BR. {tom_selecionado}\n"
-                            "Responda usando o contexto: {{context}}\n"
-                            "Pergunta: {{input}}\n\n"
+                            f"Você é um tutor acadêmico em PT-BR. " + tom_selecionado + "\n"
+                            "Responda usando o contexto: {context}\n"
+                            "Pergunta: {input}\n\n"
                             "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÃO:' "
                             "e liste 1 pergunta curta para o aluno continuar estudando este tema."
                         )
