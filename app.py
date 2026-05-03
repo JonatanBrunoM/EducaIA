@@ -13,7 +13,7 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
-from streamlit_google_auth import Authenticate
+from streamlit_google_oauth import login_button # Alterado para versão estável
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -22,46 +22,29 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Correção para Versão 1.1.8) ---
-# Criamos o objeto sem passar o dicionário no init para evitar o erro de 'Path'
-auth = Authenticate(
-    secret_credentials_path=None, 
-    cookie_name='educaia_auth_cookie',
-    cookie_key='chave_secreta_educa',
-    cookie_expiry_days=1,
-)
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Estável streamlit-google-oauth) ---
+with st.sidebar:
+    login_info = login_button(
+        client_id=st.secrets["GOOGLE_CLIENT_ID"],
+        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
+        redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"],
+    )
 
-# Injetamos as credenciais manualmente para contornar a falha da biblioteca
-auth.client_id = st.secrets["GOOGLE_CLIENT_ID"]
-auth.client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
-auth.redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
-auth.authorization_base_url = "https://accounts.google.com/o/oauth2/auth"
-auth.token_url = "https://oauth2.googleapis.com/token"
-
-# --- VERIFICAÇÃO DE LOGIN ---
-try:
-    # Tenta o método da versão 1.1.8
-    auth.check_authentication()
-except Exception:
-    # Se falhar ou não existir, a própria biblioteca gerencia via session_state
-    pass
-
-if not st.session_state.get('connected'):
+if not login_info:
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1>Bem-vindo ao EducaIA</h1>
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
-    auth.login() 
     st.stop()
 
-# Mapeia os dados do usuário logado
+# Mapeia os dados do usuário para manter compatibilidade com seu código
 user_info = {
-    "name": st.session_state.get('name'),
-    "email": st.session_state.get('email'),
-    "picture": st.session_state.get('picture'),
-    "given_name": st.session_state.get('name').split()[0] if st.session_state.get('name') else "Estudante"
+    "name": st.session_state.get('user_info', {}).get('name'),
+    "email": st.session_state.get('user_info', {}).get('email'),
+    "picture": st.session_state.get('user_info', {}).get('picture'),
+    "given_name": st.session_state.get('user_info', {}).get('given_name', 'Estudante')
 }
 
 # --- SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO ---
@@ -166,8 +149,11 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
+    # Nota: A biblioteca streamlit-google-oauth geralmente lida com a sessão, 
+    # o logout pode ser feito limpando o session_state
     if st.button("🚪 Logout"):
-        auth.logout()
+        for key in st.session_state.keys():
+            del st.session_state[key]
         st.rerun()
 
     st.markdown("---")
@@ -248,7 +234,6 @@ AVATAR_USER = user_info['picture'] # Usa a foto do Google como avatar
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 if not st.session_state.messages:
-    # Saudação personalizada com o nome do Google
     st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá, {user_info["given_name"]}!</h1><p style="font-size: 20px; opacity: 0.8;">Eu sou o EducaIA. Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
 
 # Exibição do Histórico
