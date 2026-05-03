@@ -140,7 +140,7 @@ with st.sidebar:
         if st.button(label): 
             st.session_state.sugestao_clicada = prompt
 
-    # SEÇÃO DE GLOSSÁRIO (Recuperada)
+    # SEÇÃO DE GLOSSÁRIO
     st.markdown("---")
     st.subheader("📖 Glossário Acadêmico")
     termos = {
@@ -153,6 +153,14 @@ with st.sidebar:
     for termo, prompt_termo in termos.items():
         if st.button(f"🔍 {termo}"):
             st.session_state.sugestao_clicada = prompt_termo
+
+    # --- ÁREA DISCRETA DE CONFERÊNCIA ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    with st.expander("⚙️"):
+        st.caption("Materiais na base:")
+        for arquivo in LIVROS:
+            status = "✅" if os.path.exists(arquivo) else "❌"
+            st.markdown(f"**{status}** `{arquivo}`")
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
