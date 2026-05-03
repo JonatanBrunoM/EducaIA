@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Substituição Total) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Correção PKCE + Mesma Aba) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -42,7 +42,13 @@ if "code" in query_params and not st.session_state.get('connected'):
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
-        flow.fetch_token(code=query_params["code"])
+        
+        # BUSCAMOS O VERIFIER QUE GUARDAMOS ANTES DE SAIR DO APP
+        code_verifier = st.session_state.get('code_verifier')
+        
+        # Trocamos o código pelo token usando o verifier salvo
+        flow.fetch_token(code=query_params["code"], code_verifier=code_verifier)
+        
         credentials = flow.credentials
         user_info_service = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
@@ -66,8 +72,12 @@ if not st.session_state.get('connected'):
         scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
-    # Gerar URL sem PKCE manual para evitar invalid_grant
+    
+    # GERAMOS O LINK E O VERIFIER
     authorization_url, _ = flow.authorization_url(prompt='consent')
+    
+    # GUARDAMOS O VERIFIER NA SESSÃO PARA USAR QUANDO VOLTAR
+    st.session_state['code_verifier'] = flow.code_verifier
 
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
@@ -76,8 +86,16 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
-    st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
-    st.stop() 
+    # BOTÃO PARA ABRIR NA MESMA ABA (Usando HTML em vez de link_button)
+    # O target="_self" força a abertura na mesma guia
+    st.markdown(f"""
+        <a href="{authorization_url}" target="_self" style="text-decoration: none;">
+            <div style="background-color: #1e86c8; color: white; padding: 12px; border-radius: 20px; text-align: center; font-weight: bold; width: 100%;">
+                🚀 Entrar com Google
+            </div>
+        </a>
+    """, unsafe_allow_html=True)
+    st.stop()
 
 # 3. Mapeamento para o resto do App
 user_info = {
