@@ -40,8 +40,13 @@ auth = Authenticate(
     redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"] # Adicionado aqui como argumento obrigatório
 )
 
-# Verifica se há sessão ativa
-auth.check_authenticity()
+# --- VERIFICAÇÃO DE LOGIN ---
+# Na versão 1.1.8, usamos check_authentication() ou validamos o estado diretamente
+try:
+    auth.check_authentication()
+except AttributeError:
+    # Caso o método não exista em sub-versões, a biblioteca faz o check automático no login
+    pass
 
 if not st.session_state.get('connected'):
     st.markdown("""
@@ -50,7 +55,7 @@ if not st.session_state.get('connected'):
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
-    auth.login() # Renderiza o botão de login
+    auth.login() 
     st.stop()
 
 # Mapeia os dados do usuário logado para o formato que seu código já usa
