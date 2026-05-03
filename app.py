@@ -61,16 +61,29 @@ st.markdown(f"""
     .stButton > button {{
         border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px;
     }}
-    /* Botões da área de chat (estilo pílula) */
-    .chat-action-btn > div > button {{
+    
+    /* Ajuste para fixar botões de ação no rodapé */
+    [data-testid="stBottomBlockContainer"] {{
+        background-color: white;
+        padding-bottom: 20px;
+    }}
+
+    .chat-action-container {{
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }}
+
+    .chat-action-btn button {{
         border-radius: 15px !important;
-        height: 35px !important;
+        height: 32px !important;
         padding: 0px 15px !important;
         width: auto !important;
-        font-size: 13px !important;
-        background-color: transparent !important;
+        font-size: 12px !important;
+        background-color: #f0f2f6 !important;
         border: 1px solid rgba(128, 128, 128, 0.3) !important;
     }}
+    
     .stDeployButton {{display:none;}}
     footer {{visibility: hidden;}}
     .welcome-text {{ text-align: center; margin-top: 15vh; }}
@@ -117,7 +130,6 @@ with st.sidebar:
         st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # SEÇÃO DE SUGESTÕES
     st.subheader("Sugestões")
     sugestoes = {
         "📑 Evolução das Tecnologias": "Fale sobre a evolução das tecnologias digitais na gestão em saúde.",
@@ -130,7 +142,6 @@ with st.sidebar:
         if st.button(label): 
             st.session_state.sugestao_clicada = prompt
 
-    # SEÇÃO DE GLOSSÁRIO
     st.markdown("---")
     st.subheader("📖 Glossário Acadêmico")
     termos = {
@@ -144,7 +155,6 @@ with st.sidebar:
         if st.button(f"🔍 {termo}"):
             st.session_state.sugestao_clicada = prompt_termo
 
-    # --- ÁREA DISCRETA DE CONFERÊNCIA ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.expander("⚙️"):
         st.caption("Materiais na base:")
@@ -174,31 +184,34 @@ for message in st.session_state.messages:
             else:
                 st.image(message["image_url"])
 
-# --- ÁREA DE INPUT E BOTÕES RÁPIDOS ---
-st.markdown('<div style="height: 100px;"></div>', unsafe_allow_html=True) # Espaço para não cobrir o chat
+# --- ÁREA DE RODAPÉ FIXA (INPUT + BOTÕES) ---
+# Usar o container de rodapé do Streamlit para fixar os elementos
+with st.container():
+    # Criação dos botões de ação logo acima do input, fixados pelo CSS
+    col_bt1, col_bt2, _ = st.columns([0.2, 0.15, 0.65])
+    
+    with col_bt1:
+        st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
+        if st.button("📄 Resumir Chat"):
+            if len(st.session_state.messages) > 0:
+                conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
+                st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
+            else:
+                st.toast("Inicie uma conversa primeiro!")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col_bt2:
+        st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
+        if st.button("🗑️ Limpar"):
+            st.session_state.messages = []
+            st.session_state.quiz_atual = None
+            st.session_state.ultimo_resumo = None
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
-# Colunas para os botões de ação logo acima do chat_input
-c1, c2, c3 = st.columns([1.5, 1.2, 5])
-with c1:
-    st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
-    if st.button("📄 Resumir Conversa"):
-        if len(st.session_state.messages) > 0:
-            conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
-            st.session_state.sugestao_clicada = f"Com base exclusivamente na nossa conversa abaixo, crie um resumo estruturado para meus estudos:\n\n{conteudo_chat}"
-        else:
-            st.toast("Inicie uma conversa primeiro!")
-    st.markdown('</div>', unsafe_allow_html=True)
+    input_usuario = st.chat_input("Pergunte algo...")
 
-with c2:
-    st.markdown('<div class="chat-action-btn">', unsafe_allow_html=True)
-    if st.button("🗑️ Limpar Chat"):
-        st.session_state.messages = []
-        st.session_state.quiz_atual = None
-        st.session_state.ultimo_resumo = None
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-input_usuario = st.chat_input("Pergunte algo...")
+# Lógica de processamento (Igual ao código original)
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
