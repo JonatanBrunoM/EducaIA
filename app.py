@@ -3,7 +3,7 @@ import os
 import io
 import base64
 import requests
-from fpdf import FPDF  # Necessário: pip install fpdf2
+from fpdf import FPDF
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -13,7 +13,8 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
-from streamlit_google_oauth import login_button # Alterado para versão estável
+# Importação correta da biblioteca original
+from streamlit_google_auth import Authenticate 
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -22,29 +23,39 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Estável streamlit-google-oauth) ---
-with st.sidebar:
-    login_info = login_button(
-        client_id=st.secrets["GOOGLE_CLIENT_ID"],
-        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
-        redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"],
-    )
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Técnico para Streamlit Cloud) ---
+# Criamos o objeto passando 'None' no caminho do arquivo para evitar o erro de 'Path'
+auth = Authenticate(
+    secret_credentials_path=None, 
+    cookie_name='educaia_auth_cookie',
+    cookie_key='chave_secreta_educa',
+    cookie_expiry_days=1,
+)
 
-if not login_info:
+# Injetamos os dados manualmente (Isso evita o erro de TypeError: not dict)
+auth.client_id = st.secrets["GOOGLE_CLIENT_ID"]
+auth.client_secret = st.secrets["GOOGLE_CLIENT_SECRET"]
+auth.redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
+
+# Verificamos a conexão
+if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1>Bem-vindo ao EducaIA</h1>
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
+    
+    # Chama o login passando os argumentos necessários
+    auth.login() 
     st.stop()
 
-# Mapeia os dados do usuário para manter compatibilidade com seu código
+# Mapeia os dados do usuário
 user_info = {
-    "name": st.session_state.get('user_info', {}).get('name'),
-    "email": st.session_state.get('user_info', {}).get('email'),
-    "picture": st.session_state.get('user_info', {}).get('picture'),
-    "given_name": st.session_state.get('user_info', {}).get('given_name', 'Estudante')
+    "name": st.session_state.get('name'),
+    "email": st.session_state.get('email'),
+    "picture": st.session_state.get('picture'),
+    "given_name": st.session_state.get('name').split()[0] if st.session_state.get('name') else "Estudante"
 }
 
 # --- SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO ---
