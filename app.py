@@ -13,7 +13,7 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
-from st_google_auth import GoogleAuth # Importação da nova biblioteca
+from streamlit_google_auth import Authenticate # Alterado para a biblioteca estável
 
 # 1. Configuração da Página (Sempre o primeiro comando Streamlit)
 st.set_page_config(
@@ -22,24 +22,37 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE ---
-google_auth = GoogleAuth(
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Estável) ---
+auth = Authenticate(
+    secret_credentials_path=None,
+    cookie_name='educaia_auth_cookie',
+    cookie_key='chave_secreta_educa',
+    cookie_expiry_days=1,
     client_id=st.secrets["GOOGLE_CLIENT_ID"],
     client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
     redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"],
 )
 
-user_info = google_auth.login()
+# Verifica se há sessão ativa
+auth.check_authenticity()
 
-# Verifica se o usuário está logado
-if not user_info:
+if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1>Bem-vindo ao EducaIA</h1>
             <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
         </div>
     """, unsafe_allow_html=True)
-    st.stop() # Interrompe o script aqui se não houver login
+    auth.login() # Renderiza o botão de login
+    st.stop()
+
+# Mapeia os dados do usuário logado para o formato que seu código já usa
+user_info = {
+    "name": st.session_state.get('name'),
+    "email": st.session_state.get('email'),
+    "picture": st.session_state.get('picture'),
+    "given_name": st.session_state.get('name').split()[0] if st.session_state.get('name') else "Estudante"
+}
 
 # --- SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO ---
 
@@ -144,7 +157,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     if st.button("🚪 Logout"):
-        google_auth.logout()
+        auth.logout()
         st.rerun()
 
     st.markdown("---")
