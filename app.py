@@ -72,7 +72,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- MOTOR DE IA ---
-LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
+LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
 
 @st.cache_resource
 def processar_base():
