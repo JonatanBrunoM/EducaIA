@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Sem Erro de PKCE/invalid_grant) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Substituição Total) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -32,7 +32,7 @@ client_config = {
     }
 }
 
-# Captura o código de retorno da URL
+# 1. Processar o retorno do Google (Callback)
 query_params = st.query_params
 if "code" in query_params and not st.session_state.get('connected'):
     try:
@@ -42,10 +42,8 @@ if "code" in query_params and not st.session_state.get('connected'):
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
-        # O fetch_token processa o código da URL para obter as credenciais
         flow.fetch_token(code=query_params["code"])
         credentials = flow.credentials
-        
         user_info_service = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {credentials.token}"}
@@ -60,7 +58,7 @@ if "code" in query_params and not st.session_state.get('connected'):
     except Exception as e:
         st.error(f"Erro ao processar login: {e}")
 
-# Se não estiver logado, mostra o botão customizado
+# 2. Tela de Login (Se não estiver conectado)
 if not st.session_state.get('connected'):
     from google_auth_oauthlib.flow import Flow
     flow = Flow.from_client_config(
@@ -68,8 +66,8 @@ if not st.session_state.get('connected'):
         scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
-    # authorization_url sem gerar verifier manual para evitar o erro invalid_grant
-    authorization_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
+    # Gerar URL sem PKCE manual para evitar invalid_grant
+    authorization_url, _ = flow.authorization_url(prompt='consent')
 
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
@@ -81,7 +79,7 @@ if not st.session_state.get('connected'):
     st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
     st.stop() 
 
-# Mapeia os dados do usuário para o restante do app
+# 3. Mapeamento para o resto do App
 user_info = {
     "name": st.session_state.get('name'),
     "email": st.session_state.get('email'),
