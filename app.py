@@ -114,6 +114,15 @@ with st.sidebar:
     st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
     st.markdown("<p style='font-size: 14px; opacity: 0.7; margin-bottom: 0;'>Assistente Acadêmico Digital</p>", unsafe_allow_html=True)
     
+    # SEÇÃO DE MODO DE ESTUDO
+    st.markdown("---")
+    st.subheader("🎯 Modo de Estudo")
+    modo_estudo = st.radio(
+        "Como prefere que eu responda?",
+        ["🎓 Tutor (Didático)", "📝 Resumo (Direto)", "🔬 Científico (Técnico)"],
+        index=0
+    )
+    
     st.markdown('<div class="sidebar-top-button">', unsafe_allow_html=True)
     if st.button("🗑️ Limpar Conversa"):
         st.session_state.messages = []
@@ -197,7 +206,7 @@ for message in st.session_state.messages:
 # Exibição de Sugestões Dinâmicas (após a última resposta da IA)
 if st.session_state.proximas_perguntas and st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
     st.write("---")
-    st.caption("Sugestões de continuação:")
+    st.caption("Sugestão de continuação:")
     cols_sug = st.columns(len(st.session_state.proximas_perguntas))
     for i, sug in enumerate(st.session_state.proximas_perguntas):
         with cols_sug[i]:
@@ -222,6 +231,14 @@ if prompt_final:
                 chave_groq = st.secrets["GROQ_API_KEY"]
                 llm = ChatGroq(groq_api_key=chave_groq, model_name="llama-3.1-8b-instant", temperature=0.4)
                 
+                # Definição do Tom de Voz
+                instrucao_tom = {
+                    "🎓 Tutor (Didático)": "Use linguagem simples, didática e exemplos claros.",
+                    "📝 Resumo (Direto)": "Seja muito breve, use tópicos e foque nos pontos principais.",
+                    "🔬 Científico (Técnico)": "Use termos técnicos avançados e linguagem acadêmica formal."
+                }
+                tom_selecionado = instrucao_tom[modo_estudo]
+
                 img_urls_list = []
                 # 1. Busca de Imagem
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
@@ -243,22 +260,23 @@ if prompt_final:
                 # 2. Lógica de Texto / Quiz / Resumo
                 if not img_urls_list:
                     if "nossa conversa abaixo" in prompt_final:
-                        full_text = llm.invoke(prompt_final).content
+                        full_text = llm.invoke(f"{tom_selecionado}\n\n{prompt_final}").content
                         st.session_state.ultimo_resumo = full_text
                         st.session_state.proximas_perguntas = []
                     else:
-                        # PROMPT AJUSTADO PARA GERAR SUGESTÕES AO FINAL
+                        # PROMPT AJUSTADO PARA MODO DE ESTUDO + SUGESTÃO ÚNICA
                         prompt_template = ChatPromptTemplate.from_template(
-                            "Você é um tutor acadêmico em PT-BR. Responda usando o contexto: {context}\n"
-                            "Pergunta: {input}\n\n"
+                            f"Você é um tutor acadêmico em PT-BR. {tom_selecionado}\n"
+                            "Responda usando o contexto: {{context}}\n"
+                            "Pergunta: {{input}}\n\n"
                             "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÃO:' "
-                            "e liste 1 pergunta curta para o aluno continuar estudando este tema, separadas por ponto e vírgula."
+                            "e liste 1 pergunta curta para o aluno continuar estudando este tema."
                         )
                         chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                         response = chain.invoke({"input": prompt_final})
                         raw_answer = response["answer"]
                         
-                        # Extrair sugestões do texto 
+                        # Extrair sugestão do texto 
                         if "SUGESTÃO:" in raw_answer:
                             partes = raw_answer.split("SUGESTÃO:")
                             full_text = partes[0].strip()
