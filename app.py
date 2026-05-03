@@ -13,8 +13,6 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
-# Importação correta da biblioteca original
-from streamlit_google_auth import Authenticate 
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -23,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Sem auth.login()) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Solução Final: Sem Erro de PKCE/invalid_grant) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -44,8 +42,10 @@ if "code" in query_params and not st.session_state.get('connected'):
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
+        # O fetch_token processa o código da URL para obter as credenciais
         flow.fetch_token(code=query_params["code"])
         credentials = flow.credentials
+        
         user_info_service = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {credentials.token}"}
@@ -68,7 +68,8 @@ if not st.session_state.get('connected'):
         scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
-    authorization_url, _ = flow.authorization_url(prompt='consent')
+    # authorization_url sem gerar verifier manual para evitar o erro invalid_grant
+    authorization_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
 
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
@@ -77,7 +78,6 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
-    # IMPORTANTE: Use st.link_button e NUNCA chame auth.login()
     st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
     st.stop() 
 
@@ -138,6 +138,7 @@ st.markdown(f"""
         color: #1e86c8 !important;
         font-style: italic !important;
         font-size: 13px !important;
+        font-size: 13px !important;
         height: auto !important;
         text-align: center !important;
     }}
@@ -191,10 +192,8 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
     
-    # Nota: A biblioteca streamlit-google-oauth geralmente lida com a sessão, 
-    # o logout pode ser feito limpando o session_state
     if st.button("🚪 Logout"):
-        for key in st.session_state.keys():
+        for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
 
@@ -272,7 +271,7 @@ with st.sidebar:
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
 base = processar_base()
 
-AVATAR_USER = user_info['picture'] # Usa a foto do Google como avatar
+AVATAR_USER = user_info['picture'] 
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 if not st.session_state.messages:
