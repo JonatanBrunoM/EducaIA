@@ -251,19 +251,19 @@ if prompt_final:
                         prompt_template = ChatPromptTemplate.from_template(
                             "Você é um tutor acadêmico em PT-BR. Responda usando o contexto: {context}\n"
                             "Pergunta: {input}\n\n"
-                            "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÕES:' "
-                            "e liste 3 perguntas curtas para o aluno continuar estudando este tema, separadas por ponto e vírgula."
+                            "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÃO:' "
+                            "e liste 1 pergunta curta para o aluno continuar estudando este tema, separadas por ponto e vírgula."
                         )
                         chain = create_retrieval_chain(base.as_retriever(), create_stuff_documents_chain(llm, prompt_template))
                         response = chain.invoke({"input": prompt_final})
                         raw_answer = response["answer"]
                         
-                        # Extrair sugestões do texto
-                        if "SUGESTÕES:" in raw_answer:
-                            partes = raw_answer.split("SUGESTÕES:")
+                        # Extrair sugestões do texto 
+                        if "SUGESTÃO:" in raw_answer:
+                            partes = raw_answer.split("SUGESTÃO:")
                             full_text = partes[0].strip()
-                            sug_raw = partes[1].split(";")
-                            st.session_state.proximas_perguntas = [s.strip() for s in sug_raw if s.strip()][:3]
+                            sugestao_unica = partes[1].strip().split('\n')[0] 
+                            st.session_state.proximas_perguntas = [sugestao_unica]
                         else:
                             full_text = raw_answer
                             st.session_state.proximas_perguntas = []
