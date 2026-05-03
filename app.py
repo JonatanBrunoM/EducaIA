@@ -22,23 +22,22 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão 1.1.8 - Formato Dicionário) ---
-# Criamos o dicionário no formato que a biblioteca espera internamente
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão 1.1.8 - Ajuste de Argumentos) ---
 google_creds = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
         "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
-        "redirect_uris": [st.secrets["GOOGLE_REDIRECT_URI"]],
     }
 }
 
 auth = Authenticate(
-    secret_credentials_path=google_creds, # Passamos o dicionário aqui
+    secret_credentials_path=google_creds,
     cookie_name='educaia_auth_cookie',
     cookie_key='chave_secreta_educa',
-    cookie_expiry_days=1
+    cookie_expiry_days=1,
+    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"] # Adicionado aqui como argumento obrigatório
 )
 
 # Verifica se há sessão ativa
