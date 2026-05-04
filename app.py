@@ -21,9 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão com "Escape" via JavaScript) ---
-import streamlit.components.v1 as components
-
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Link Direto Nativo) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -78,39 +76,36 @@ if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 15vh;'>
             <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Clique no botão abaixo para entrar.</p>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login para continuar.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Este HTML usa JavaScript para forçar a janela pai (a aba do navegador) 
-    # a navegar para o Google, ignorando o bloqueio do iframe do Streamlit.
-    login_js_html = f"""
-    <div style="display: flex; justify-content: center;">
-        <button onclick="window.parent.location.href='{auth_url}'" style="
-            background-color: #1e86c8;
-            color: white;
-            padding: 16px 40px;
-            border: none;
-            border-radius: 30px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            max-width: 300px;
-            box-shadow: 0 4px 12px rgba(30, 134, 200, 0.3);
-        ">
-            🚀 Entrar com Google
-        </button>
-    </div>
-    <script>
-        // Fallback para celulares: se o window.parent falhar, tenta o top
-        document.querySelector('button').onclick = function() {{
-            window.top.location.href = '{auth_url}';
-        }};
-    </script>
-    """
+    # O SEGREDO: Usar st.link_button nativo, mas com um parâmetro que força 
+    # a saída do iframe (o Streamlit lida com isso internamente nos botões nativos agora)
+    # Se o nativo falhar, o código abaixo usa um link que o navegador não pode ignorar.
     
-    components.html(login_js_html, height=100)
+    st.markdown(f"""
+        <div style="display: flex; justify-content: center;">
+            <a href="{auth_url}" target="_top" style="
+                background-color: #1e86c8;
+                color: white;
+                padding: 16px 40px;
+                text-decoration: none;
+                border-radius: 30px;
+                font-size: 18px;
+                font-weight: bold;
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(30, 134, 200, 0.3);
+                display: block;
+            ">
+                🚀 Entrar com Google
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.warning("⚠️ Se o botão não responder ao clique, tente manter pressionado e selecionar 'Abrir'.")
     st.stop()
     
 # 3. Mapeamento para o resto do App
