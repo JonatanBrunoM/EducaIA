@@ -21,7 +21,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão de Alta Compatibilidade) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Final para Erro 403) ---
+# Permite que a biblioteca aceite o redirecionamento do Streamlit Cloud
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -34,20 +37,17 @@ client_config = {
 
 from google_auth_oauthlib.flow import Flow
 
-# Criamos o objeto Flow
-flow = Flow.from_client_config(
-    client_config,
-    scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
-    redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
-)
-
 # 1. Processar o retorno do Google (Callback)
 query_params = st.query_params
 if "code" in query_params and not st.session_state.get('connected'):
     try:
-        # Recuperamos o verifier salvo antes do redirecionamento
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
+            redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
+        )
+        # Recuperamos o verifier salvo
         code_verifier = st.session_state.get('code_verifier')
-        
         flow.fetch_token(code=query_params["code"], code_verifier=code_verifier)
         
         credentials = flow.credentials
@@ -64,15 +64,24 @@ if "code" in query_params and not st.session_state.get('connected'):
         st.rerun()
     except Exception as e:
         st.error(f"Erro ao processar login: {e}")
-        # Se der erro, limpamos o código da URL para permitir nova tentativa
         st.query_params.clear()
 
 # 2. Tela de Login (Se não estiver conectado)
 if not st.session_state.get('connected'):
-    # Geramos a URL e o Verifier
-    authorization_url, _ = flow.authorization_url(prompt='consent')
+    flow = Flow.from_client_config(
+        client_config,
+        scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
+        redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
+    )
     
-    # IMPORTANTE: Guardar o verifier ANTES de exibir o link
+    # O segredo para evitar o 403 na mesma aba é gerar o verifier antes da URL
+    authorization_url, _ = flow.authorization_url(
+        prompt='consent',
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    
+    # Salva o verifier para o retorno
     st.session_state['code_verifier'] = flow.code_verifier
 
     st.markdown("""
@@ -82,7 +91,6 @@ if not st.session_state.get('connected'):
         </div>
     """, unsafe_allow_html=True)
     
-    # Botão com target="_self"
     st.markdown(f"""
         <a href="{authorization_url}" target="_self" style="text-decoration: none;">
             <div style="background-color: #1e86c8; color: white; padding: 12px; border-radius: 20px; text-align: center; font-weight: bold; width: 100%;">
