@@ -13,6 +13,7 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
+from google_auth_oauthlib.flow import Flow
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -21,7 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Oficial Nativa) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -32,9 +33,7 @@ client_config = {
     }
 }
 
-from google_auth_oauthlib.flow import Flow
-
-# 1. Processar o retorno do Google (Callback)
+# Processar o retorno do Google (Callback)
 query_params = st.query_params
 if "code" in query_params and not st.session_state.get('connected'):
     try:
@@ -61,41 +60,21 @@ if "code" in query_params and not st.session_state.get('connected'):
         st.error(f"Erro ao processar login: {e}")
         st.query_params.clear()
 
-# 2. Tela de Login com Componente Nativo
-if not st.session_state.get('connected'):
-    client_id = st.secrets["GOOGLE_CLIENT_ID"]
-    redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
-    scope = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid"
-    
-    # URL de autorização
-    auth_url = (
-        f"https://accounts.google.com/o/oauth2/auth?"
-        f"response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&"
-        f"scope={scope}&prompt=select_account"
-    )
-
-    st.markdown("""
-        <div style='text-align: center; margin-top: 10vh;'>
-            <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Para sua segurança, autentique-se com o Google.</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # O st.link_button é o ÚNICO que o Streamlit garante que funciona em iframes
-    st.link_button("🚀 ACESSAR COM GOOGLE", auth_url, use_container_width=True, type="primary")
-    
-    st.caption("Nota: Se o botão abrir uma nova aba, complete o login nela para retornar a este painel.")
-    st.stop()
-    
-# 3. Mapeamento para o resto do App
-user_info = {
-    "name": st.session_state.get('name'),
-    "email": st.session_state.get('email'),
-    "picture": st.session_state.get('picture'),
-    "given_name": st.session_state.get('name').split()[0] if st.session_state.get('name') else "Estudante"
-}
-
-# --- SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO ---
+# Definição de Variáveis de Usuário (Modo Híbrido: Logado ou Visitante)
+if st.session_state.get('connected'):
+    user_info = {
+        "name": st.session_state.get('name'),
+        "email": st.session_state.get('email'),
+        "picture": st.session_state.get('picture'),
+        "given_name": st.session_state.get('name').split()[0] if st.session_state.get('name') else "Estudante"
+    }
+else:
+    user_info = {
+        "name": "Visitante",
+        "email": "Sem login",
+        "picture": "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png",
+        "given_name": "Estudante"
+    }
 
 def get_base64_of_bin_file(bin_file):
     try:
@@ -144,7 +123,6 @@ st.markdown(f"""
         color: #1e86c8 !important;
         font-style: italic !important;
         font-size: 13px !important;
-        font-size: 13px !important;
         height: auto !important;
         text-align: center !important;
     }}
@@ -187,21 +165,29 @@ if "proximas_perguntas" not in st.session_state:
 
 # --- BARRA LATERAL ---
 with st.sidebar:
-    # Perfil do Usuário Logado
-    st.markdown(f"""
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-            <img src="{user_info['picture']}" style="width: 40px; border-radius: 50%;">
-            <div>
-                <p style="margin: 0; font-weight: bold; font-size: 14px;">{user_info['name']}</p>
-                <p style="margin: 0; font-size: 12px; opacity: 0.7;">{user_info['email']}</p>
+    if st.session_state.get('connected'):
+        st.markdown(f"""
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                <img src="{user_info['picture']}" style="width: 40px; border-radius: 50%;">
+                <div>
+                    <p style="margin: 0; font-weight: bold; font-size: 14px;">{user_info['name']}</p>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.7;">{user_info['email']}</p>
+                </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    if st.button("🚪 Logout"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+        """, unsafe_allow_html=True)
+        if st.button("🚪 Logout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+    else:
+        st.info("Entre para personalizar sua experiência.")
+        auth_url = (
+            f"https://accounts.google.com/o/oauth2/auth?"
+            f"response_type=code&client_id={st.secrets['GOOGLE_CLIENT_ID']}&"
+            f"redirect_uri={st.secrets['GOOGLE_REDIRECT_URI']}&"
+            f"scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid&prompt=select_account"
+        )
+        st.link_button("🚀 ACESSAR COM GOOGLE", auth_url, use_container_width=True, type="primary")
 
     st.markdown("---")
     st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
@@ -254,7 +240,7 @@ with st.sidebar:
             st.session_state.sugestao_clicada = prompt
 
     st.markdown("---")
-    st.subheader("📖 Glossário Acadêmico")
+    st.subheader("🔍 Glossário Acadêmico")
     termos = {
         "Cibercultura": "Explique o conceito de Cibercultura conforme os documentos.",
         "IA na Saúde": "O que é Inteligência Artificial aplicada à saúde?",
