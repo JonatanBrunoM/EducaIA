@@ -21,7 +21,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão de Redirecionamento Direto) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão com Componente de Redirecionamento) ---
+import streamlit.components.v1 as components
+
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -67,7 +69,6 @@ if not st.session_state.get('connected'):
     redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
     scope = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid"
     
-    # URL construída para ser interpretada como navegação pura
     auth_url = (
         f"https://accounts.google.com/o/oauth2/auth?"
         f"response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&"
@@ -75,38 +76,36 @@ if not st.session_state.get('connected'):
     )
 
     st.markdown("""
-        <div style='text-align: center; margin-top: 20vh;'>
+        <div style='text-align: center; margin-top: 10vh;'>
             <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Identificamos que você precisa se autenticar.</p>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Para acessar seu tutor, clique no botão abaixo.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Técnica de "Botão de Escape": usamos target="_top" para forçar a saída do iframe do Streamlit
-    st.markdown(f"""
-        <div style="text-align: center;">
-            <a href="{auth_url}" target="_top">
-                <button style="
-                    background-color: #1e86c8;
-                    color: white;
-                    padding: 15px 32px;
-                    text-align: center;
-                    text-decoration: none;
-                    display: inline-block;
-                    font-size: 16px;
-                    margin: 4px 2px;
-                    cursor: pointer;
-                    border: none;
-                    border-radius: 25px;
-                    font-weight: bold;
-                    width: 80%;
-                ">
-                    🚀 ACESSAR COM GOOGLE
-                </button>
-            </a>
-        </div>
-    """, unsafe_allow_html=True)
+    # O COMPONENTE MÁGICO: Cria um botão real que o navegador não ignora
+    login_button_html = f"""
+    <div style="display: flex; justify-content: center; align-items: center; height: 100px;">
+        <a href="{auth_url}" target="_top" style="text-decoration: none; width: 100%;">
+            <button style="
+                background-color: #1e86c8;
+                color: white;
+                padding: 18px 0;
+                border: none;
+                border-radius: 30px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                width: 100%;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            ">
+                🚀 Entrar com Google
+            </button>
+        </a>
+    </div>
+    """
+    # Renderiza o HTML de forma isolada para garantir o clique
+    components.html(login_button_html, height=150)
     
-    st.info("Nota: Se o erro 403 persistir na mesma URL, verifique as permissões de rede do seu navegador.")
     st.stop()
     
 # 3. Mapeamento para o resto do App
