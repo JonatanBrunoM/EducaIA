@@ -187,7 +187,7 @@ with st.sidebar:
             f"redirect_uri={st.secrets['GOOGLE_REDIRECT_URI']}&"
             f"scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid&prompt=select_account"
         )
-        st.link_button("🚀 ACESSAR COM GOOGLE", auth_url, use_container_width=True, type="primary")
+        st.link_button("Efetuar login", auth_url, use_container_width=True, type="primary")
 
     st.markdown("---")
     st.markdown(f'<div class="sidebar-header"><img src="data:image/png;base64,{bin_str_mini}" class="sidebar-logo"><h1 style="font-size: 22px; margin: 0;">EducaIA</h1></div>', unsafe_allow_html=True)
