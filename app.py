@@ -101,33 +101,67 @@ def gerar_pdf_resumo(texto):
     return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
 # 2. CSS Customizado
+# 2. CSS Customizado Atualizado
 st.markdown(f"""
     <style>
-    /* Estiliza o botão de link nativo do Streamlit */
-    .stElementContainer div[data-testid="stLinkButton"] a {
+    /* Estiliza o botão de link nativo (Login Google) */
+    .stElementContainer div[data-testid="stLinkButton"] a {{
         background-color: #1e86c8 !important;
         color: white !important;
         border: none !important;
-    }
+        border-radius: 20px !important;
+        text-align: center !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 10px 20px !important;
+        transition: background-color 0.3s ease !important;
+    }}
     
-    .stElementContainer div[data-testid="stLinkButton"] a:hover {
+    .stElementContainer div[data-testid="stLinkButton"] a:hover {{
         background-color: #156b9f !important;
         color: white !important;
-    }
+        text-decoration: none !important;
+    }}
+
+    /* Estilo da Sidebar */
     .sidebar-top-button {{
         padding-top: 10px;
         padding-bottom: 20px;
         border-bottom: 1px solid rgba(128, 128, 128, 0.2);
         margin-bottom: 20px;
     }}
+    
     .faculdade-logo {{
-        position: absolute; top: -55px; left: 50px; width: 150px; z-index: 99;
+        position: absolute; 
+        top: -55px; 
+        left: 50px; 
+        width: 150px; 
+        z-index: 99;
     }}
-    .sidebar-header {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }}
-    .sidebar-logo {{ width: 35px; height: auto; }}
+    
+    .sidebar-header {{ 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        margin-bottom: 10px; 
+    }}
+    
+    .sidebar-logo {{ 
+        width: 35px; 
+        height: auto; 
+    }}
+    
+    /* Botões normais da Sidebar */
     .stButton > button {{
-        border-radius: 20px; border: 1px solid #444746; width: 100%; text-align: left; padding: 10px 20px;
+        border-radius: 20px; 
+        border: 1px solid #444746; 
+        width: 100%; 
+        text-align: left; 
+        padding: 10px 20px;
     }}
+    
+    /* Botões de sugestão (estilo itálico azul) */
     .suggestion-btn button {{
         background-color: transparent !important;
         border: 1px solid #1e86c8 !important;
@@ -137,12 +171,23 @@ st.markdown(f"""
         height: auto !important;
         text-align: center !important;
     }}
+    
+    /* Esconder elementos desnecessários */
     .stDeployButton {{display:none;}}
     footer {{visibility: hidden;}}
-    .welcome-text {{ text-align: center; margin-top: 10vh; }}
+    
+    /* Texto de Boas-vindas */
+    .welcome-text {{ 
+        text-align: center; 
+        margin-top: 10vh; 
+    }}
+    
     .welcome-title {{
-        font-size: 50px; font-weight: 600; background: linear-gradient(90deg, #1e86c8, #8ac5e2);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        font-size: 50px; 
+        font-weight: 600; 
+        background: linear-gradient(90deg, #1e86c8, #8ac5e2);
+        -webkit-background-clip: text; 
+        -webkit-text-fill-color: transparent;
     }}
     </style>
     """, unsafe_allow_html=True)
