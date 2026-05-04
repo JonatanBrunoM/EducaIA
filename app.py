@@ -103,6 +103,17 @@ def gerar_pdf_resumo(texto):
 # 2. CSS Customizado
 st.markdown(f"""
     <style>
+    /* Estiliza o botão de link nativo do Streamlit */
+    .stElementContainer div[data-testid="stLinkButton"] a {
+        background-color: #1e86c8 !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .stElementContainer div[data-testid="stLinkButton"] a:hover {
+        background-color: #156b9f !important;
+        color: white !important;
+    }
     .sidebar-top-button {{
         padding-top: 10px;
         padding-bottom: 20px;
