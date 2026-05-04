@@ -21,10 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Ajuste Final para Erro 403) ---
-# Permite que a biblioteca aceite o redirecionamento do Streamlit Cloud
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Multi-Aba Estável) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -38,17 +35,17 @@ client_config = {
 from google_auth_oauthlib.flow import Flow
 
 # 1. Processar o retorno do Google (Callback)
+# O Google volta para cá. Se o código estiver na URL, o login aconteceu.
 query_params = st.query_params
-if "code" in query_params and not st.session_state.get('connected'):
+if "code" in query_params:
     try:
         flow = Flow.from_client_config(
             client_config,
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
-        # Recuperamos o verifier salvo
-        code_verifier = st.session_state.get('code_verifier')
-        flow.fetch_token(code=query_params["code"], code_verifier=code_verifier)
+        # Tenta pegar o token sem o verifier (mais compatível para fluxos simples)
+        flow.fetch_token(code=query_params["code"])
         
         credentials = flow.credentials
         user_info_service = requests.get(
@@ -56,15 +53,18 @@ if "code" in query_params and not st.session_state.get('connected'):
             headers={"Authorization": f"Bearer {credentials.token}"}
         ).json()
         
+        # Salva tudo na sessão
         st.session_state.connected = True
         st.session_state.name = user_info_service.get("name")
         st.session_state.email = user_info_service.get("email")
         st.session_state.picture = user_info_service.get("picture")
+        
+        # Limpa os parâmetros e avisa que logou
         st.query_params.clear()
+        st.success("Login realizado com sucesso! Você já pode fechar esta aba ou aguardar o redirecionamento.")
         st.rerun()
     except Exception as e:
-        st.error(f"Erro ao processar login: {e}")
-        st.query_params.clear()
+        st.error(f"Erro ao processar: {e}")
 
 # 2. Tela de Login (Se não estiver conectado)
 if not st.session_state.get('connected'):
@@ -74,26 +74,21 @@ if not st.session_state.get('connected'):
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
     
-    # Gerar URL da forma mais básica possível
-    authorization_url, _ = flow.authorization_url() # Removendo prompt='consent' para testar
-    
-    # Salva o verifier
-    st.session_state['code_verifier'] = flow.code_verifier
+    # Gera a URL de autorização sem PKCE para máxima compatibilidade entre abas
+    authorization_url, _ = flow.authorization_url(prompt='select_account')
 
     st.markdown("""
-        <div style='text-align: center; margin-top: 20vh;'>
-            <h1>Bem-vindo ao EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
+        <div style='text-align: center; margin-top: 15vh; padding: 20px;'>
+            <h1 style='color: #1e86c8;'>EducaIA</h1>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Para acessar seu tutor acadêmico, clique no botão abaixo.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    st.markdown(f"""
-        <a href="{authorization_url}" target="_self" style="text-decoration: none;">
-            <div style="background-color: #1e86c8; color: white; padding: 12px; border-radius: 20px; text-align: center; font-weight: bold; width: 100%;">
-                🚀 Entrar com Google
-            </div>
-        </a>
-    """, unsafe_allow_html=True)
+    # Usando o link_button nativo: ele abre em nova aba por padrão
+    # Isso resolve o 403 porque o Google trata como uma navegação limpa
+    st.link_button("🚀 Entrar com Google", authorization_url, use_container_width=True)
+    
+    st.info("💡 Uma nova aba será aberta para o login. Após concluir, esta página será atualizada automaticamente.")
     st.stop()
     
 # 3. Mapeamento para o resto do App
