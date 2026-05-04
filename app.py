@@ -74,14 +74,10 @@ if not st.session_state.get('connected'):
         redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
     )
     
-    # O segredo para evitar o 403 na mesma aba é gerar o verifier antes da URL
-    authorization_url, _ = flow.authorization_url(
-        prompt='consent',
-        access_type='offline',
-        include_granted_scopes='true'
-    )
+    # Gerar URL da forma mais básica possível
+    authorization_url, _ = flow.authorization_url() # Removendo prompt='consent' para testar
     
-    # Salva o verifier para o retorno
+    # Salva o verifier
     st.session_state['code_verifier'] = flow.code_verifier
 
     st.markdown("""
