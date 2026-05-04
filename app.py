@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão com Componente de Redirecionamento) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão com "Escape" via JavaScript) ---
 import streamlit.components.v1 as components
 
 client_config = {
@@ -76,36 +76,41 @@ if not st.session_state.get('connected'):
     )
 
     st.markdown("""
-        <div style='text-align: center; margin-top: 10vh;'>
+        <div style='text-align: center; margin-top: 15vh;'>
             <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Para acessar seu tutor, clique no botão abaixo.</p>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Clique no botão abaixo para entrar.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # O COMPONENTE MÁGICO: Cria um botão real que o navegador não ignora
-    login_button_html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; height: 100px;">
-        <a href="{auth_url}" target="_top" style="text-decoration: none; width: 100%;">
-            <button style="
-                background-color: #1e86c8;
-                color: white;
-                padding: 18px 0;
-                border: none;
-                border-radius: 30px;
-                font-size: 18px;
-                font-weight: bold;
-                cursor: pointer;
-                width: 100%;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            ">
-                🚀 Entrar com Google
-            </button>
-        </a>
+    # Este HTML usa JavaScript para forçar a janela pai (a aba do navegador) 
+    # a navegar para o Google, ignorando o bloqueio do iframe do Streamlit.
+    login_js_html = f"""
+    <div style="display: flex; justify-content: center;">
+        <button onclick="window.parent.location.href='{auth_url}'" style="
+            background-color: #1e86c8;
+            color: white;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(30, 134, 200, 0.3);
+        ">
+            🚀 Entrar com Google
+        </button>
     </div>
+    <script>
+        // Fallback para celulares: se o window.parent falhar, tenta o top
+        document.querySelector('button').onclick = function() {{
+            window.top.location.href = '{auth_url}';
+        }};
+    </script>
     """
-    # Renderiza o HTML de forma isolada para garantir o clique
-    components.html(login_button_html, height=150)
     
+    components.html(login_js_html, height=100)
     st.stop()
     
 # 3. Mapeamento para o resto do App
