@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Link Direto Nativo) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Redirecionamento Automático) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -61,7 +61,7 @@ if "code" in query_params and not st.session_state.get('connected'):
         st.error(f"Erro ao processar login: {e}")
         st.query_params.clear()
 
-# 2. Tela de Login
+# 2. Redirecionamento Automático (Se não estiver conectado)
 if not st.session_state.get('connected'):
     client_id = st.secrets["GOOGLE_CLIENT_ID"]
     redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
@@ -73,39 +73,37 @@ if not st.session_state.get('connected'):
         f"scope={scope}&prompt=select_account"
     )
 
-    st.markdown("""
-        <div style='text-align: center; margin-top: 15vh;'>
-            <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login para continuar.</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # O SEGREDO: Usar st.link_button nativo, mas com um parâmetro que força 
-    # a saída do iframe (o Streamlit lida com isso internamente nos botões nativos agora)
-    # Se o nativo falhar, o código abaixo usa um link que o navegador não pode ignorar.
-    
+    # Interface de "Carregando" enquanto redireciona
     st.markdown(f"""
-        <div style="display: flex; justify-content: center;">
-            <a href="{auth_url}" target="_top" style="
-                background-color: #1e86c8;
-                color: white;
-                padding: 16px 40px;
-                text-decoration: none;
-                border-radius: 30px;
-                font-size: 18px;
-                font-weight: bold;
-                width: 100%;
-                max-width: 300px;
-                text-align: center;
-                box-shadow: 0 4px 12px rgba(30, 134, 200, 0.3);
-                display: block;
-            ">
-                🚀 Entrar com Google
-            </a>
+        <div style='text-align: center; margin-top: 20vh;'>
+            <h2 style='color: #1e86c8;'>EducaIA</h2>
+            <p>Redirecionando para o login seguro do Google...</p>
+            <div class="loader"></div>
         </div>
+        <script>
+            // O "pulo do gato": redireciona a janela principal automaticamente
+            window.top.location.href = "{auth_url}";
+        </script>
+        <style>
+            .loader {{
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #1e86c8;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 2s linear infinite;
+                margin: auto;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+        </style>
     """, unsafe_allow_html=True)
     
-    st.warning("⚠️ Se o botão não responder ao clique, tente manter pressionado e selecionar 'Abrir'.")
+    # Botão de emergência caso o redirecionamento automático seja bloqueado pelo navegador
+    st.markdown(f"<div style='text-align:center; margin-top:20px;'><a href='{auth_url}' target='_top' style='color: #1e86c8; text-decoration: none;'>Clique aqui se não for redirecionado automaticamente</a></div>", unsafe_allow_html=True)
+    
     st.stop()
     
 # 3. Mapeamento para o resto do App
