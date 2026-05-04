@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Estável Sem PKCE) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Final de Resgate) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -38,29 +38,23 @@ from google_auth_oauthlib.flow import Flow
 query_params = st.query_params
 if "code" in query_params and not st.session_state.get('connected'):
     try:
-        # Criamos o flow sem PKCE para evitar conflitos de estado no Streamlit
         flow = Flow.from_client_config(
             client_config,
             scopes=['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email', 'openid'],
             redirect_uri=st.secrets["GOOGLE_REDIRECT_URI"]
         )
-        
-        # Busca o token usando apenas o código retornado
         flow.fetch_token(code=query_params["code"])
-        
         credentials = flow.credentials
         user_info_service = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {credentials.token}"}
         ).json()
         
-        # Salva as informações na sessão
         st.session_state.connected = True
         st.session_state.name = user_info_service.get("name")
         st.session_state.email = user_info_service.get("email")
         st.session_state.picture = user_info_service.get("picture")
         
-        # Limpa a URL e recarrega o app já logado
         st.query_params.clear()
         st.rerun()
     except Exception as e:
@@ -69,11 +63,14 @@ if "code" in query_params and not st.session_state.get('connected'):
 
 # 2. Tela de Login (Se não estiver conectado)
 if not st.session_state.get('connected'):
-    # Construção manual da URL para garantir target="_self" e evitar erro 403
     client_id = st.secrets["GOOGLE_CLIENT_ID"]
     redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
+    # Garante que a origem não tenha barra no final para o Google
+    base_origin = redirect_uri.split(".app")[0] + ".app" if ".app" in redirect_uri else redirect_uri
+    
     scope = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid"
     
+    # URL Ultra-simplificada para evitar bloqueio de segurança
     authorization_url = (
         f"https://accounts.google.com/o/oauth2/auth?"
         f"response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&"
@@ -83,14 +80,13 @@ if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para acessar o material acadêmico.</p>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para continuar.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Botão estilizado que abre na MESMA aba
     st.markdown(f"""
         <a href="{authorization_url}" target="_self" style="text-decoration: none;">
-            <div style="background-color: #1e86c8; color: white; padding: 14px; border-radius: 25px; text-align: center; font-weight: bold; width: 100%; transition: 0.3s;">
+            <div style="background-color: #1e86c8; color: white; padding: 14px; border-radius: 25px; text-align: center; font-weight: bold; width: 100%;">
                 🚀 Entrar com Google
             </div>
         </a>
