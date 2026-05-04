@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão Final de Resgate) ---
+# --- CONFIGURAÇÃO LOGIN GOOGLE (Versão de Redirecionamento Direto) ---
 client_config = {
     "web": {
         "client_id": st.secrets["GOOGLE_CLIENT_ID"],
@@ -61,17 +61,14 @@ if "code" in query_params and not st.session_state.get('connected'):
         st.error(f"Erro ao processar login: {e}")
         st.query_params.clear()
 
-# 2. Tela de Login (Se não estiver conectado)
+# 2. Tela de Login
 if not st.session_state.get('connected'):
     client_id = st.secrets["GOOGLE_CLIENT_ID"]
     redirect_uri = st.secrets["GOOGLE_REDIRECT_URI"]
-    # Garante que a origem não tenha barra no final para o Google
-    base_origin = redirect_uri.split(".app")[0] + ".app" if ".app" in redirect_uri else redirect_uri
-    
     scope = "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid"
     
-    # URL Ultra-simplificada para evitar bloqueio de segurança
-    authorization_url = (
+    # URL construída para ser interpretada como navegação pura
+    auth_url = (
         f"https://accounts.google.com/o/oauth2/auth?"
         f"response_type=code&client_id={client_id}&redirect_uri={redirect_uri}&"
         f"scope={scope}&prompt=select_account"
@@ -80,17 +77,36 @@ if not st.session_state.get('connected'):
     st.markdown("""
         <div style='text-align: center; margin-top: 20vh;'>
             <h1 style='color: #1e86c8;'>EducaIA</h1>
-            <p style='font-size: 1.2rem; opacity: 0.8;'>Faça login com sua conta Google para continuar.</p>
+            <p style='font-size: 1.2rem; opacity: 0.8;'>Identificamos que você precisa se autenticar.</p>
         </div>
     """, unsafe_allow_html=True)
     
+    # Técnica de "Botão de Escape": usamos target="_top" para forçar a saída do iframe do Streamlit
     st.markdown(f"""
-        <a href="{authorization_url}" target="_self" style="text-decoration: none;">
-            <div style="background-color: #1e86c8; color: white; padding: 14px; border-radius: 25px; text-align: center; font-weight: bold; width: 100%;">
-                🚀 Entrar com Google
-            </div>
-        </a>
+        <div style="text-align: center;">
+            <a href="{auth_url}" target="_top">
+                <button style="
+                    background-color: #1e86c8;
+                    color: white;
+                    padding: 15px 32px;
+                    text-align: center;
+                    text-decoration: none;
+                    display: inline-block;
+                    font-size: 16px;
+                    margin: 4px 2px;
+                    cursor: pointer;
+                    border: none;
+                    border-radius: 25px;
+                    font-weight: bold;
+                    width: 80%;
+                ">
+                    🚀 ACESSAR COM GOOGLE
+                </button>
+            </a>
+        </div>
     """, unsafe_allow_html=True)
+    
+    st.info("Nota: Se o erro 403 persistir na mesma URL, verifique as permissões de rede do seu navegador.")
     st.stop()
     
 # 3. Mapeamento para o resto do App
