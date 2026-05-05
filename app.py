@@ -446,7 +446,6 @@ if prompt_final:
                             st.session_state.quiz_atual = None
                             st.rerun()
 
-                st.rerun()
             except Exception as e:
                 st.error(f"Erro: {e}")
 
