@@ -432,6 +432,7 @@ if prompt_final:
                         st.markdown(full_text)
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
+                    st.rerun()
 
                 if st.session_state.quiz_atual:
                     q = st.session_state.quiz_atual
