@@ -265,8 +265,8 @@ with st.sidebar:
         st.session_state.proximas_perguntas = []
         st.rerun()
     
-    if st.button("🧠 Quiz - Em construção"):
-        st.session_state.quiz_atual = None
+    if st.button("🧠 Gerar Quiz"):
+        st.session_state.quiz_atual = None # Limpa o anterior
         st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
 
     if st.button("📄 Gerar Resumo da Conversa"):
@@ -445,16 +445,28 @@ if prompt_final:
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
                     st.rerun()
 
+                # --- LÓGICA DO QUIZ ---
                 if st.session_state.quiz_atual:
                     q = st.session_state.quiz_atual
-                    st.markdown(f"### 📝 Desafio: {q['p']}")
-                    escolha = st.radio("Selecione a alternativa:", q['o'], index=None, key="quiz_radio")
-                    if escolha:
-                        if escolha[0].upper() == q['c']:
-                            st.success(f"🎯 Correto! Alternativa {q['c']}.")
-                        else:
-                            st.error(f"❌ Incorreto. A correta era {q['c']}.")
-                        if st.button("Finalizar Quiz"):
+                    with st.expander("📝 DESAFIO DO DIA", expanded=True):
+                        st.markdown(f"**{q['p']}**")
+                        
+                        # Usamos um formulário para evitar que a página recarregue a cada clique
+                        with st.form(key="quiz_form"):
+                            escolha = st.radio("Escolha a alternativa correta:", q['o'], index=None)
+                            submit_quiz = st.form_submit_button("Verificar Resposta")
+
+                            if submit_quiz:
+                                if escolha:
+                                    letra_escolhida = escolha[0].upper()
+                                    if letra_escolhida == q['c']:
+                                        st.success(f"🎯 Excelente! A alternativa {q['c']} está correta.")
+                                    else:
+                                        st.error(f"❌ Não foi dessa vez. A resposta correta era a {q['c']}.")
+                                else:
+                                    st.warning("Selecione uma opção antes de enviar.")
+
+                        if st.button("Finalizar e Voltar para a Aula"):
                             st.session_state.quiz_atual = None
                             st.rerun()
 
