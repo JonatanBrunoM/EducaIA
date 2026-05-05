@@ -381,13 +381,24 @@ if prompt_final:
                         headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
                         res = requests.post(url_serper, headers=headers, json=payload)
                         search_results = res.json()
+                        
                         if search_results.get('images'):
                             img_urls_list = [img['imageUrl'] for img in search_results['images']]
-                            st.markdown(f"Imagens encontradas:")
-                            cols = st.columns(len(img_urls_list))
-                            for idx, url in enumerate(img_urls_list): cols[idx].image(url)
-                            st.session_state.messages.append({"role": "assistant", "content": f"Galeria sobre {prompt_final}", "image_url": img_urls_list})
-                    except: pass
+                            
+                            # Adicionamos ao histórico. O seu código de "Exibição do Histórico" 
+                            # (linhas 347-356) já sabe desenhar imagens se "image_url" estiver presente.
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": f"Aqui estão algumas imagens sobre: {prompt_final}", 
+                                "image_url": img_urls_list
+                            })
+                            
+                            # Importante: Limpa a sugestão clicada e dá rerun para mostrar no chat
+                            st.session_state.sugestao_clicada = None
+                            st.rerun() 
+                    except Exception as e:
+                        # Opcional: st.error(f"Erro na busca de imagens: {e}")
+                        pass
 
                 if not img_urls_list:
                     if "nossa conversa abaixo" in prompt_final:
