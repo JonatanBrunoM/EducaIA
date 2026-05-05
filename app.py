@@ -97,7 +97,7 @@ def gerar_pdf_resumo(texto):
     pdf.set_font("Helvetica", size=12)
     texto_limpo = texto.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 10, txt=texto_limpo)
-    pdf_bytes = pdf.output()
+    pdf_bytes = pdf.output(dest='S')
     return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
 # 2. CSS Customizado
