@@ -266,7 +266,7 @@ with st.sidebar:
     
     if st.button("🧠 Gerar Quiz"):
         st.session_state.quiz_atual = None # Limpa o anterior
-        st.session_state.sugestao_clicada = "Gere uma questão de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | CORRETA: [letra]"
+        st.session_state.sugestao_clicada = "Gere 10 questões de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | D) [opção] | CORRETA: [letra]. Separe cada questão por uma linha nova."
 
     if st.button("📄 Gerar Resumo da Conversa"):
         if len(st.session_state.messages) > 0:
@@ -354,19 +354,18 @@ with tab_aula:
 
 # --- CONTEÚDO DA ABA QUIZ ---
 with tab_quiz:
-    st.subheader("Seus Desafios Acadêmicos")
     if st.session_state.quiz_atual:
-        q = st.session_state.quiz_atual
-        st.success("✨ Novo desafio gerado! Resolva abaixo:")
-        
-        with st.form(key="quiz_form_aba"):
-            st.markdown(f"### {q['p']}")
-            escolha = st.radio("Selecione a opção correta:", q['o'], index=None)
-            if st.form_submit_button("Confirmar Resposta"):
-                if escolha and escolha[0].upper() == q['c']:
-                    st.success("🎯 Parabéns! Você acertou.")
-                else:
-                    st.error(f"❌ Quase lá! A resposta correta era {q['c']}.")
+        # Se for uma lista de questões
+        for idx, q in enumerate(st.session_state.quiz_atual):
+            with st.expander(f"Questão {idx+1}", expanded=(idx==0)):
+                with st.form(key=f"form_quiz_{idx}"):
+                    st.write(q['p'])
+                    escolha = st.radio("Opções:", q['o'], key=f"rad_{idx}")
+                    if st.form_submit_button("Verificar"):
+                        if escolha and escolha[0].upper() == q['c']:
+                            st.success("Correto!")
+                        else:
+                            st.error(f"Incorreto. Resposta: {q['c']}")
         
         if st.button("Limpar Quiz"):
             st.session_state.quiz_atual = None
@@ -431,7 +430,7 @@ if prompt_final:
                             "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÃO:' "
                             "e liste 1 pergunta curta para o aluno continuar estudando este tema."
                             "REGRAS DE RESPOSTA:\n"
-                            "1. Se o aluno pedir um QUIZ ou questão, use EXATAMENTE: PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | CORRETA: [Letra]\n"
+                            "1. Se o aluno pedir um QUIZ ou questão, use EXATAMENTE: PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | D) [op4] | CORRETA: [Letra]\n"
                             "2. Caso contrário, responda normalmente e termine com 'SUGESTÃO: [pergunta curta]'."
                         )
                         
@@ -451,15 +450,22 @@ if prompt_final:
                             full_text = raw_answer
                             st.session_state.proximas_perguntas = []
 
-                    if "PERGUNTA:" in full_text and "|" in full_text:
+                    if "PERGUNTA:" in full_text:
                         try:
-                            partes = full_text.split("|")
-                            pergunta = partes[0].replace("PERGUNTA:", "").strip()
-                            opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
-                            correta = partes[4].replace("CORRETA:", "").strip().upper()
-                            st.session_state.quiz_atual = {"p": pergunta, "o": opcoes, "c": correta}
-                            # Mensagem amigável redirecionando para a aba Quiz
-                            full_text = "🎯 Preparei um desafio para você! Vá até a aba **'📝 Espaço de Desafios'** para responder."
+                            linhas_questoes = full_text.strip().split('\n')
+                            lista_quizzes = []
+        
+                            for linha in linhas_questoes:
+                                if "|" in linha and "PERGUNTA:" in linha:
+                                    partes = linha.split("|")
+                                    pergunta = partes[0].replace("PERGUNTA:", "").strip()
+                                    opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
+                                    correta = partes[4].replace("CORRETA:", "").strip().upper()
+                                    lista_quizzes.append({"p": pergunta, "o": opcoes, "c": correta})
+        
+                            if lista_quizzes:
+                                    st.session_state.quiz_atual = lista_quizzes # Agora guarda a lista de 10
+                                    full_text = f"🎯 Preparei {len(lista_quizzes)} desafios para você! Vá até a aba **'📝 Espaço de Desafios'**."
                         except:
                             pass
                     
