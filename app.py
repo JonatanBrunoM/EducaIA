@@ -266,7 +266,7 @@ with st.sidebar:
     
     if st.button("🧠 Gerar Quiz"):
         st.session_state.quiz_atual = None # Limpa o anterior
-        st.session_state.sugestao_clicada = "Gere 10 questões de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [opção] | B) [opção] | C) [opção] | D) [opção] | CORRETA: [letra]. Separe cada questão por uma linha nova."
+        st.session_state.sugestao_clicada = "Gere 10 questões de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | D) [op4] | CORRETA: [letra]. Separe cada questão por uma linha nova."
 
     if st.button("📄 Gerar Resumo da Conversa"):
         if len(st.session_state.messages) > 0:
@@ -459,8 +459,8 @@ if prompt_final:
                                 if "|" in linha and "PERGUNTA:" in linha:
                                     partes = linha.split("|")
                                     pergunta = partes[0].replace("PERGUNTA:", "").strip()
-                                    opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
-                                    correta = partes[4].replace("CORRETA:", "").strip().upper()
+                                    opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip(), partes[4].strip()]
+                                    correta = partes[5].replace("CORRETA:", "").strip().upper()
                                     lista_quizzes.append({"p": pergunta, "o": opcoes, "c": correta})
         
                             if lista_quizzes:
