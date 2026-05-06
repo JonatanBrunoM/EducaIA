@@ -322,44 +322,73 @@ base = processar_base()
 AVATAR_USER = user_info['picture'] 
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
-if not st.session_state.messages:
-    st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá, {user_info["given_name"]}!</h1><p style="font-size: 20px; opacity: 0.8;">Eu sou o EducaIA. Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
+# 1. Criação das Abas
+tab_aula, tab_quiz = st.tabs(["📖 Aula Interativa", "📝 Espaço de Desafios"])
 
-# Exibição do Histórico
-for message in st.session_state.messages:
-    avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
-        if "image_url" in message:
-            if isinstance(message["image_url"], list):
-                cols = st.columns(len(message["image_url"]))
-                for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
-            else:
-                st.image(message["image_url"])
+# --- CONTEÚDO DA ABA AULA ---
+with tab_aula:
+    # Tudo aqui dentro precisa de 4 espaços de recuo
+    if not st.session_state.messages:
+        st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá, {user_info["given_name"]}!</h1><p style="font-size: 20px; opacity: 0.8;">Eu sou o EducaIA. Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
 
-# Exibição de Sugestões Dinâmicas
-if st.session_state.proximas_perguntas and st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
-    st.write("---")
-    st.caption("Sugestão de continuação:")
-    cols_sug = st.columns(len(st.session_state.proximas_perguntas))
-    for i, sug in enumerate(st.session_state.proximas_perguntas):
-        with cols_sug[i]:
-            st.markdown('<div class="suggestion-btn">', unsafe_allow_html=True)
-            if st.button(sug, key=f"btn_sug_{i}"):
-                st.session_state.sugestao_clicada = sug
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+    # Exibição do Histórico (DENTRO DA ABA)
+    for message in st.session_state.messages:
+        avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
+        with st.chat_message(message["role"], avatar=avatar):
+            st.markdown(message["content"])
+            if "image_url" in message:
+                if isinstance(message["image_url"], list):
+                    cols = st.columns(len(message["image_url"]))
+                    for idx, url in enumerate(message["image_url"]): cols[idx].image(url)
+                else:
+                    st.image(message["image_url"])
 
+    # Sugestões Dinâmicas (DENTRO DA ABA)
+    if st.session_state.proximas_perguntas and st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+        st.write("---")
+        st.caption("Sugestão de continuação:")
+        cols_sug = st.columns(len(st.session_state.proximas_perguntas))
+        for i, sug in enumerate(st.session_state.proximas_perguntas):
+            with cols_sug[i]:
+                st.markdown('<div class="suggestion-btn">', unsafe_allow_html=True)
+                if st.button(sug, key=f"btn_sug_{i}"):
+                    st.session_state.sugestao_clicada = sug
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+
+# --- CONTEÚDO DA ABA QUIZ ---
+with tab_quiz:
+    st.subheader("Seus Desafios Acadêmicos")
+    if st.session_state.quiz_atual:
+        q = st.session_state.quiz_atual
+        st.info("💡 Você tem um desafio pendente! Responda abaixo:")
+        
+        with st.form(key="quiz_form_aba"):
+            st.markdown(f"### {q['p']}")
+            escolha = st.radio("Selecione a opção correta:", q['o'], index=None)
+            if st.form_submit_button("Confirmar Resposta"):
+                if escolha and escolha[0].upper() == q['c']:
+                    st.success("🎯 Parabéns! Você acertou.")
+                else:
+                    st.error(f"❌ Quase lá! A resposta correta era {q['c']}.")
+        
+        if st.button("Limpar Quiz e Gerar Novo"):
+            st.session_state.quiz_atual = None
+            st.rerun()
+    else:
+        st.write("Nenhum quiz ativo no momento. Peça um quiz na aba de Aula ou use o botão na barra lateral!")
+
+# --- INPUT E LÓGICA DE IA (FORA DAS ABAS PARA FUNCIONAR SEMPRE) ---
 input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
-if st.session_state.sugestao_clicada: st.session_state.sugestao_clicada = None
 
 if prompt_final:
+    st.session_state.sugestao_clicada = None # Limpa a sugestão após usar
     st.session_state.messages.append({"role": "user", "content": prompt_final})
-    with st.chat_message("user", avatar=AVATAR_USER):
-        st.markdown(prompt_final)
-
+    
+    # Roda a IA (O seu bloco try/except Groq continua aqui abaixo...)
     with st.chat_message("assistant", avatar=AVATAR_AI):
+        # ... (Restante do seu código de processamento da Groq)
         with st.spinner("Processando..."):
             try:
                 chave_groq = st.secrets["GROQ_API_KEY"]
@@ -412,6 +441,9 @@ if prompt_final:
                             "Pergunta: {input}\n\n"
                             "IMPORTANTE: Ao final da resposta, adicione sempre uma linha começando exatamente com 'SUGESTÃO:' "
                             "e liste 1 pergunta curta para o aluno continuar estudando este tema."
+                            "REGRAS DE RESPOSTA:\n"
+                            "1. Se o aluno pedir um QUIZ ou questão, use EXATAMENTE: PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | CORRETA: [Letra]\n"
+                            "2. Caso contrário, responda normalmente e termine com 'SUGESTÃO: [pergunta curta]'."
                         )
                         
                         prompt_template = ChatPromptTemplate.from_template(template_texto)
@@ -444,34 +476,6 @@ if prompt_final:
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
                     st.rerun()
-
-                # --- LÓGICA DO QUIZ ---
-                if st.session_state.quiz_atual:
-                    q = st.session_state.quiz_atual
-                    with st.expander("📝 DESAFIO DO DIA", expanded=True):
-                        st.markdown(f"**{q['p']}**")
-                        
-                        # Usamos um formulário para evitar que a página recarregue a cada clique
-                        with st.form(key="quiz_form"):
-                            escolha = st.radio("Escolha a alternativa correta:", q['o'], index=None)
-                            submit_quiz = st.form_submit_button("Verificar Resposta")
-
-                            if submit_quiz:
-                                if escolha:
-                                    letra_escolhida = escolha[0].upper()
-                                    if letra_escolhida == q['c']:
-                                        st.success(f"🎯 Excelente! A alternativa {q['c']} está correta.")
-                                    else:
-                                        st.error(f"❌ Não foi dessa vez. A resposta correta era a {q['c']}.")
-                                else:
-                                    st.warning("Selecione uma opção antes de enviar.")
-
-                        if st.button("Finalizar e Voltar para a Aula"):
-                            st.session_state.quiz_atual = None
-                            st.rerun()
-
-            except Exception as e:
-                st.error(f"Erro: {e}")
 
 # Botão de Download PDF
 if st.session_state.ultimo_resumo:
