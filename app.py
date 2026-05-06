@@ -361,11 +361,19 @@ with tab_quiz:
                 with st.form(key=f"form_quiz_{idx}"):
                     st.write(q['p'])
                     escolha = st.radio("Opções:", q['o'], key=f"rad_{idx}")
-                    if st.form_submit_button("Verificar"):
-                        if escolha and escolha[0].upper() == q['c']:
-                            st.success("Correto!")
+                    if st.form_submit_button("Confirmar Resposta"):
+                        if escolha:
+                            # Pega a primeira letra da escolha (ex: "A")
+                            letra_escolhida = escolha[0].upper()
+        
+                            if letra_escolhida == q['c']:
+                                st.success(f"🎯 Correto! A alternativa é a {q['c']}.")
+                            else:
+                                # Aqui mostramos qual era a resposta correta
+                                st.error(f"❌ Incorreto.")
+                                st.info(f"💡 A resposta correta era a alternativa: **{q['c']}**")
                         else:
-                            st.error(f"Incorreto. Resposta: {q['c']}")
+                            st.warning("Por favor, selecione uma opção.")
         
         if st.button("Limpar Quiz"):
             st.session_state.quiz_atual = None
@@ -461,6 +469,8 @@ if prompt_final:
                                     pergunta = partes[0].replace("PERGUNTA:", "").strip()
                                     opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip(), partes[4].strip()]
                                     correta = partes[5].replace("CORRETA:", "").strip().upper()
+                                    correta = correta.replace(")", "").strip()
+                                    
                                     lista_quizzes.append({"p": pergunta, "o": opcoes, "c": correta})
         
                             if lista_quizzes:
