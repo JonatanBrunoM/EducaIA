@@ -100,7 +100,6 @@ def gerar_pdf_resumo(texto):
     pdf_bytes = pdf.output(dest='S')
     return bytes(pdf_bytes) if isinstance(pdf_bytes, bytearray) else pdf_bytes
 
-# 2. CSS Customizado
 # 2. CSS Customizado Atualizado
 st.markdown(f"""
     <style>
@@ -298,7 +297,7 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("🔍 Glossário Acadêmico")
     termos = {
-        "Cibercultura": "Explique o conceito de Cibercultura conforme os documentos.",
+        "Cibercultura": "Explique o concept de Cibercultura conforme os documentos.",
         "IA na Saúde": "O que é Inteligência Artificial aplicada à saúde?",
         "Geração Alfa": "Quem é a Geração Alfa no contexto educacional tecnológico?",
         "IoT (Internet das Coisas)": "O que significa IoT e como se aplica à saúde?",
@@ -327,11 +326,9 @@ tab_aula, tab_quiz = st.tabs(["📖 Aula Interativa", "📝 Espaço de Desafios"
 
 # --- CONTEÚDO DA ABA AULA ---
 with tab_aula:
-    # Tudo aqui dentro precisa de 4 espaços de recuo
     if not st.session_state.messages:
         st.markdown(f'<div class="welcome-text"><h1 class="welcome-title">Olá, {user_info["given_name"]}!</h1><p style="font-size: 20px; opacity: 0.8;">Eu sou o EducaIA. Vamos estudar sobre qual assunto hoje?</p></div>', unsafe_allow_html=True)
 
-    # Exibição do Histórico (DENTRO DA ABA)
     for message in st.session_state.messages:
         avatar = AVATAR_AI if message["role"] == "assistant" else AVATAR_USER
         with st.chat_message(message["role"], avatar=avatar):
@@ -343,7 +340,6 @@ with tab_aula:
                 else:
                     st.image(message["image_url"])
 
-    # Sugestões Dinâmicas (DENTRO DA ABA)
     if st.session_state.proximas_perguntas and st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
         st.write("---")
         st.caption("Sugestão de continuação:")
@@ -361,7 +357,7 @@ with tab_quiz:
     st.subheader("Seus Desafios Acadêmicos")
     if st.session_state.quiz_atual:
         q = st.session_state.quiz_atual
-        st.info("💡 Você tem um desafio pendente! Responda abaixo:")
+        st.success("✨ Novo desafio gerado! Resolva abaixo:")
         
         with st.form(key="quiz_form_aba"):
             st.markdown(f"### {q['p']}")
@@ -372,23 +368,21 @@ with tab_quiz:
                 else:
                     st.error(f"❌ Quase lá! A resposta correta era {q['c']}.")
         
-        if st.button("Limpar Quiz e Gerar Novo"):
+        if st.button("Limpar Quiz"):
             st.session_state.quiz_atual = None
             st.rerun()
     else:
         st.write("Nenhum quiz ativo no momento. Peça um quiz na aba de Aula ou use o botão na barra lateral!")
 
-# --- INPUT E LÓGICA DE IA (FORA DAS ABAS PARA FUNCIONAR SEMPRE) ---
+# --- INPUT E LÓGICA DE IA ---
 input_usuario = st.chat_input("Pergunte algo...")
 prompt_final = input_usuario if input_usuario else st.session_state.sugestao_clicada
 
 if prompt_final:
-    st.session_state.sugestao_clicada = None # Limpa a sugestão após usar
+    st.session_state.sugestao_clicada = None 
     st.session_state.messages.append({"role": "user", "content": prompt_final})
     
-    # Roda a IA (O seu bloco try/except Groq continua aqui abaixo...)
     with st.chat_message("assistant", avatar=AVATAR_AI):
-        # ... (Restante do seu código de processamento da Groq)
         with st.spinner("Processando..."):
             try:
                 chave_groq = st.secrets["GROQ_API_KEY"]
@@ -401,7 +395,9 @@ if prompt_final:
                 }
                 tom_selecionado = instrucao_tom[modo_estudo]
 
+                full_text = "" # Inicializa a variável para evitar erro de referência
                 img_urls_list = []
+                
                 if any(x in prompt_final.lower() for x in ["imagem", "foto", "mostre", "veja", "figura"]):
                     try:
                         serper_key = st.secrets["SERPER_API_KEY"]
@@ -413,20 +409,13 @@ if prompt_final:
                         
                         if search_results.get('images'):
                             img_urls_list = [img['imageUrl'] for img in search_results['images']]
-                            
-                            # Adicionamos ao histórico. O seu código de "Exibição do Histórico" 
-                            # (linhas 347-356) já sabe desenhar imagens se "image_url" estiver presente.
                             st.session_state.messages.append({
                                 "role": "assistant", 
                                 "content": f"Aqui estão algumas imagens sobre: {prompt_final}", 
                                 "image_url": img_urls_list
                             })
-                            
-                            # Importante: Limpa a sugestão clicada e dá rerun para mostrar no chat
-                            st.session_state.sugestao_clicada = None
                             st.rerun() 
                     except Exception as e:
-                        # Opcional: st.error(f"Erro na busca de imagens: {e}")
                         pass
 
                 if not img_urls_list:
@@ -469,13 +458,16 @@ if prompt_final:
                             opcoes = [partes[1].strip(), partes[2].strip(), partes[3].strip()]
                             correta = partes[4].replace("CORRETA:", "").strip().upper()
                             st.session_state.quiz_atual = {"p": pergunta, "o": opcoes, "c": correta}
+                            # Mensagem amigável redirecionando para a aba Quiz
+                            full_text = "🎯 Preparei um desafio para você! Vá até a aba **'📝 Espaço de Desafios'** para responder."
                         except:
-                            st.markdown(full_text)
-                    else:
-                        st.markdown(full_text)
+                            pass
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_text})
                     st.rerun()
+
+            except Exception as e:
+                st.error(f"Ocorreu um erro no motor de IA: {e}")
 
 # Botão de Download PDF
 if st.session_state.ultimo_resumo:
