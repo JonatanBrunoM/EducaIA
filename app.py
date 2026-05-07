@@ -196,19 +196,16 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- MOTOR DE IA ---
-# 1. Defina a lista mestre primeiro
-ARQUIVOS_DISPONIVEIS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
+# --- CONFIGURAÇÃO DAS BASES DE DADOS (TRAVADO NO CÓDIGO) ---
+# Todos os arquivos que o Chat Geral consegue ler
+ARQUIVOS_CHAT_GERAL = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
 
-with st.sidebar:
-    st.subheader("📚 Fonte de Conhecimento")
-    # 2. Use a lista mestre nas opções
-    livros_selecionados = st.multiselect(
-        "Selecione os arquivos para basear o estudo:",
-        options=ARQUIVOS_DISPONIVEIS,
-        default=ARQUIVOS_DISPONIVEIS 
-    )
-    # 3. Atualize a variável LIVROS que será usada na base
-    LIVROS = livros_selecionados
+# Apenas os arquivos que o Quiz deve usar
+ARQUIVOS_QUIZ_FIXO = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"] # Altere aqui conforme sua preferência
+
+# Criamos as duas bases separadamente
+base_geral = processar_base(ARQUIVOS_CHAT_GERAL)
+base_quiz = processar_base(ARQUIVOS_QUIZ_FIXO)
 
 @st.cache_resource
 def processar_base(lista_arquivos):
@@ -331,8 +328,8 @@ with st.sidebar:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     with st.expander("⚙️"):
-        st.caption("Materiais na base:")
-        for arquivo in LIVROS:
+        st.caption("Materiais carregados no sistema:")
+        for arquivo in ARQUIVOS_CHAT_GERAL:
             status = "✅" if os.path.exists(arquivo) else "❌"
             st.markdown(f"**{status}** `{arquivo}`")
 
@@ -466,10 +463,20 @@ if prompt_final:
                         
                         prompt_template = ChatPromptTemplate.from_template(template_texto)
                         combine_docs_chain = create_stuff_documents_chain(llm, prompt_template)
-                        if base is None:
-                            st.error("Por favor, selecione ao menos um arquivo na barra lateral para começar.")
+                        
+                        # --- LÓGICA DE SELEÇÃO DE BASE ---
+                        # Se o prompt for o comando de gerar quiz, usa a base fixa do quiz
+                        if "Gere 10 questões de múltipla escolha" in prompt_final:
+                            retriever_selecionado = base_quiz_fixa.as_retriever()
+                        else:
+                            # Para chat normal, usa a base geral completa
+                            retriever_selecionado = base_geral.as_retriever()
+
+                        if retriever_selecionado is None:
+                            st.error("Erro: Base de conhecimento não disponível.")
                             st.stop()
-                        chain = create_retrieval_chain(base.as_retriever(), combine_docs_chain)
+
+                        chain = create_retrieval_chain(retriever_selecionado, combine_docs_chain)
                         
                         response = chain.invoke({"input": prompt_final})
                         raw_answer = response["answer"]
