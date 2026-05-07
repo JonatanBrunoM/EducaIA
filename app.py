@@ -352,7 +352,7 @@ AVATAR_USER = user_info['picture']
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
 
 # 1. Criação das Abas
-tab_aula, tab_quiz = st.tabs(["📖 Aula Interativa", "📝 Espaço de Desafios"])
+tab_aula, tab_quiz, tab_pegada = st.tabs(["📖 Aula Interativa", "📝 Espaço de Desafios", "🌍 Pegada Ecológica"])
 
 # --- CONTEÚDO DA ABA AULA ---
 with tab_aula:
@@ -419,6 +419,60 @@ with tab_quiz:
             st.rerun()
     else:
         st.write("Nenhum quiz ativo no momento. Peça um quiz na aba de Aula ou use o botão na barra lateral!")
+
+# --- CONTEÚDO DA ABA PEGADA ECOLÓGICA ---
+with tab_pegada:
+    st.header("🌍 Jogo da Pegada Ecológica")
+    st.markdown("""
+        Inspirado no **Museu do Amanhã**, este interativo analisa seus hábitos de consumo, 
+        alimentação, moradia e transporte para mostrar seu impacto ambiental.
+    """)
+    
+    with st.container(border=True):
+        with st.form("form_pegada"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                alimento = st.selectbox("Qual a base da sua alimentação?", 
+                    ["🍎 Baseada em vegetais/local", "🥩 Equilibrada (carne algumas vezes)", "🍔 Muita carne e processados"])
+                transporte = st.selectbox("Como você se desloca no dia a dia?", 
+                    ["🚲 A pé, bicicleta ou transporte público", "🚗 Carro compartilhado / Apps", "🚘 Carro sozinho"])
+            
+            with col2:
+                moradia = st.selectbox("Como é o consumo de energia na sua casa?", 
+                    ["💡 Uso consciente e energia renovável", "🏠 Consumo médio", "❄️ Uso intenso (Ar condicionado/Eletrônicos)"])
+                residuos = st.selectbox("Como você lida com o lixo?", 
+                    ["♻️ Reciclo quase tudo e evito plástico", "🗑️ Reciclo apenas o básico", "🚮 Não costumo reciclar"])
+
+            submitted = st.form_submit_button("📊 Calcular meu Impacto", use_container_width=True)
+
+            if submitted:
+                # Lógica de Pontuação (Simulação de Planetas)
+                p_alim = 0.7 if "vegetais" in alimento else (1.6 if "Equilibrada" in alimento else 2.8)
+                p_trans = 0.4 if "bicicleta" in transporte else (1.8 if "Apps" in transporte else 3.2)
+                p_mora = 0.6 if "consciente" in moradia else (1.5 if "médio" in moradia else 2.5)
+                p_resi = 0.3 if "quase tudo" in residuos else (1.2 if "básico" in residuos else 2.0)
+                
+                planetas = round((p_alim + p_trans + p_mora + p_resi) / 4 * 1.5, 1)
+                
+                st.markdown("---")
+                st.subheader("Se todos vivessem como você...")
+                
+                col_res1, col_res2 = st.columns([1, 2])
+                with col_res1:
+                    st.metric("Precisaríamos de", f"{planetas} Terras")
+                
+                with col_res2:
+                    if planetas <= 1.2:
+                        st.success("🌱 Parabéns! Seu estilo de vida respeita os limites da regeneração do planeta.")
+                    elif planetas <= 2.5:
+                        st.warning("⚠️ Atenção! Seu impacto está acima do que a Terra consegue suportar a longo prazo.")
+                    else:
+                        st.error("🚨 Alerta Crítico! Precisamos rever nossos hábitos urgentemente para garantir o futuro.")
+                
+                st.write("🌍" * int(planetas + 0.5))
+                
+                st.info("**Curiosidade em Saúde:** A sustentabilidade ambiental está diretamente ligada à saúde pública. Menos poluição e melhor alimentação reduzem drasticamente doenças crônicas e respiratórias na população!")
 
 # --- INPUT E LÓGICA DE IA ---
 input_usuario = st.chat_input("Pergunte algo...")
