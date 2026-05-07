@@ -16,6 +16,9 @@ from langchain.chains import create_history_aware_retriever
 from langchain_core.prompts import ChatPromptTemplate
 from google_auth_oauthlib.flow import Flow
 
+if "connected" not in st.session_state:
+    st.session_state.connected = False
+
 # 1. Configuração da Página
 st.set_page_config(
     page_title="EducaIA", 
@@ -193,22 +196,24 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- MOTOR DE IA ---
-LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
+# 1. Defina a lista mestre primeiro
+ARQUIVOS_DISPONIVEIS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
 
 with st.sidebar:
     st.subheader("📚 Fonte de Conhecimento")
+    # 2. Use a lista mestre nas opções
     livros_selecionados = st.multiselect(
         "Selecione os arquivos para basear o estudo:",
         options=ARQUIVOS_DISPONIVEIS,
-        default=ARQUIVOS_DISPONIVEIS # Começa com todos selecionados
+        default=ARQUIVOS_DISPONIVEIS 
     )
-    # Atualiza a lista global LIVROS com base na seleção
+    # 3. Atualize a variável LIVROS que será usada na base
     LIVROS = livros_selecionados
 
 @st.cache_resource
 def processar_base(lista_arquivos):
     documentos = []
-    for arquivo in lista_arquivos    :
+    for arquivo in lista_arquivos:
         if os.path.exists(arquivo):
             loader = PyPDFLoader(arquivo)
             documentos.extend(loader.load())
@@ -461,6 +466,9 @@ if prompt_final:
                         
                         prompt_template = ChatPromptTemplate.from_template(template_texto)
                         combine_docs_chain = create_stuff_documents_chain(llm, prompt_template)
+                        if base is None:
+                            st.error("Por favor, selecione ao menos um arquivo na barra lateral para começar.")
+                            st.stop()
                         chain = create_retrieval_chain(base.as_retriever(), combine_docs_chain)
                         
                         response = chain.invoke({"input": prompt_final})
