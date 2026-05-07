@@ -196,17 +196,6 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # --- MOTOR DE IA ---
-# --- CONFIGURAÇÃO DAS BASES DE DADOS (TRAVADO NO CÓDIGO) ---
-# Todos os arquivos que o Chat Geral consegue ler
-ARQUIVOS_CHAT_GERAL = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
-
-# Apenas os arquivos que o Quiz deve usar
-ARQUIVOS_QUIZ_FIXO = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"] # Altere aqui conforme sua preferência
-
-# Criamos as duas bases separadamente
-base_geral = processar_base(ARQUIVOS_CHAT_GERAL)
-base_quiz = processar_base(ARQUIVOS_QUIZ_FIXO)
-
 @st.cache_resource
 def processar_base(lista_arquivos):
     documentos = []
@@ -214,11 +203,20 @@ def processar_base(lista_arquivos):
         if os.path.exists(arquivo):
             loader = PyPDFLoader(arquivo)
             documentos.extend(loader.load())
-    if not documentos: return None
+    if not documentos: 
+        return None
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     textos = text_splitter.split_documents(documentos)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return FAISS.from_documents(textos, embeddings)
+
+# --- CONFIGURAÇÃO DAS BASES DE DADOS (TRAVADO NO CÓDIGO) ---
+ARQUIVOS_CHAT_GERAL = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
+ARQUIVOS_QUIZ_FIXO = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
+
+# Criamos as duas bases separadamente usando a função acima
+base_geral = processar_base(ARQUIVOS_CHAT_GERAL)
+base_quiz_fixa = processar_base(ARQUIVOS_QUIZ_FIXO)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -335,7 +333,6 @@ with st.sidebar:
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
-base = processar_base(LIVROS)
 
 AVATAR_USER = user_info['picture'] 
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
