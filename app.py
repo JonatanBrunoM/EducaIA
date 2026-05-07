@@ -387,19 +387,28 @@ with tab_quiz:
     if st.session_state.quiz_atual:
         # Se for uma lista de questões
         for idx, q in enumerate(st.session_state.quiz_atual):
+            # O título do expander continua ordenado (1, 2, 3...), 
+            # mas o conteúdo interno será limpo.
             with st.expander(f"Questão {idx+1}", expanded=(idx==0)):
                 with st.form(key=f"form_quiz_{idx}"):
-                    st.write(q['p'])
+                    
+                    # --- AJUSTE AQUI ---
+                    # Removemos possíveis números no início da pergunta vindos da IA (ex: "1. Qual...")
+                    pergunta_limpa = q['p']
+                    if "." in pergunta_limpa[:4]: # Se houver algo como "1. " ou "10. "
+                        pergunta_limpa = pergunta_limpa.split(".", 1)[-1].strip()
+                    
+                    st.write(pergunta_limpa)
+                    # -------------------
+
                     escolha = st.radio("Opções:", q['o'], key=f"rad_{idx}")
                     if st.form_submit_button("Confirmar Resposta"):
                         if escolha:
-                            # Pega a primeira letra da escolha (ex: "A")
                             letra_escolhida = escolha[0].upper()
         
                             if letra_escolhida == q['c']:
                                 st.success(f"🎯 Correto! A alternativa é a {q['c']}.")
                             else:
-                                # Aqui mostramos qual era a resposta correta
                                 st.error(f"❌ Incorreto.")
                                 st.info(f"💡 A resposta correta era a alternativa: **{q['c']}**")
                         else:
