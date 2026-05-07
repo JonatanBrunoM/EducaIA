@@ -3,6 +3,7 @@ import os
 import io
 import base64
 import requests
+import random
 from fpdf import FPDF
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
@@ -194,10 +195,20 @@ st.markdown(f"""
 # --- MOTOR DE IA ---
 LIVROS = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf", "datacenter.pdf", "internetdascoisas.pdf"]
 
+with st.sidebar:
+    st.subheader("📚 Fonte de Conhecimento")
+    livros_selecionados = st.multiselect(
+        "Selecione os arquivos para basear o estudo:",
+        options=ARQUIVOS_DISPONIVEIS,
+        default=ARQUIVOS_DISPONIVEIS # Começa com todos selecionados
+    )
+    # Atualiza a lista global LIVROS com base na seleção
+    LIVROS = livros_selecionados
+
 @st.cache_resource
-def processar_base():
+def processar_base(lista_arquivos):
     documentos = []
-    for arquivo in LIVROS:
+    for arquivo in lista_arquivos    :
         if os.path.exists(arquivo):
             loader = PyPDFLoader(arquivo)
             documentos.extend(loader.load())
@@ -266,8 +277,14 @@ with st.sidebar:
     
     if st.button("🧠 Gerar Quiz"):
         st.session_state.quiz_atual = None # Limpa o anterior
-        st.session_state.sugestao_clicada = "Gere 10 questões de múltipla escolha baseada nos PDFs. Use EXATAMENTE este formato: PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | D) [op4] | CORRETA: [letra]. Separe cada questão por uma linha nova."
-
+        st.session_state.sugestao_clicada = (
+            "Gere 10 questões de múltipla escolha aleatórias e diversificadas, "
+            "escolhendo diferentes tópicos misturados dos PDFs selecionados. "
+            "Não foque apenas em um capítulo. "
+            "Use EXATAMENTE este formato para CADA uma: "
+            "PERGUNTA: [texto] | A) [op1] | B) [op2] | C) [op3] | D) [op4] | CORRETA: [letra]"
+        )
+    
     if st.button("📄 Gerar Resumo da Conversa"):
         if len(st.session_state.messages) > 0:
             conteudo_chat = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages if "image_url" not in m])
@@ -316,7 +333,7 @@ with st.sidebar:
 
 # --- ÁREA PRINCIPAL ---
 st.markdown(f'<img src="data:image/png;base64,{bin_str_faculdade}" class="faculdade-logo">', unsafe_allow_html=True)
-base = processar_base()
+base = processar_base(LIVROS)
 
 AVATAR_USER = user_info['picture'] 
 AVATAR_AI = f"data:image/png;base64,{bin_str_mini}"
@@ -475,6 +492,7 @@ if prompt_final:
         
                             if lista_quizzes:
                                     st.session_state.quiz_atual = lista_quizzes # Agora guarda a lista de 10
+                                    random.shuffle(lista_quizzes) # EMBARALHA a ordem das 10 questões
                                     full_text = f"🎯 Preparei {len(lista_quizzes)} desafios para você! Vá até a aba **'📝 Espaço de Desafios'**."
                         except:
                             pass
