@@ -200,11 +200,21 @@ st.markdown(f"""
 def processar_base(lista_arquivos):
     documentos = []
     for arquivo in lista_arquivos:
-        if os.path.exists(arquivo):
-            loader = PyPDFLoader(arquivo)
-            documentos.extend(loader.load())
+        # Verifica se o arquivo existe E se não está vazio (tamanho > 0)
+        if os.path.exists(arquivo) and os.path.getsize(arquivo) > 0:
+            try:
+                loader = PyPDFLoader(arquivo)
+                documentos.extend(loader.load())
+            except Exception as e:
+                # Se um PDF específico der erro, ele pula e avisa no log, mas não trava o app
+                st.warning(f"Erro ao ler o arquivo {arquivo}: {e}")
+                continue
+        else:
+            st.error(f"Arquivo não encontrado ou vazio: {arquivo}")
+            
     if not documentos: 
         return None
+        
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     textos = text_splitter.split_documents(documentos)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -217,6 +227,10 @@ ARQUIVOS_QUIZ_FIXO = ["ebook1.pdf", "ebook2.pdf", "ebook3.pdf", "ebook4.pdf"]
 # Criamos as duas bases separadamente usando a função acima
 base_geral = processar_base(ARQUIVOS_CHAT_GERAL)
 base_quiz_fixa = processar_base(ARQUIVOS_QUIZ_FIXO)
+
+if base_geral is None:
+    st.error("ERRO CRÍTICO: Não foi possível carregar os PDFs da base geral. Verifique se os arquivos estão na pasta do projeto.")
+    st.stop()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
